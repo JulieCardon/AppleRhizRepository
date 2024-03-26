@@ -7,4 +7,7 @@
 */*/*.fastq.gz
 */*/*/*.fastq.gz
 */*/*/*/*.fastq.gz
-
+01_DADA_2/data/02_filtered_fastqs/*.fastq.gz
+01_DADA_2/data/02_filtered_fastqs_2023/*.fastq.gz
+01_DADA_2/data/rawfastqs/data_2022/*.fastq.gz
+01_DADA_2/data/rawfastqs/data_2023/*.fastq.gz
