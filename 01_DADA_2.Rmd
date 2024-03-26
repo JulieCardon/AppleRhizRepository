@@ -128,6 +128,11 @@ filtered_reverse_reads2 <-
 length(filtered_reverse_reads2)
 ```
 
+```{r}
+table(filtered_forward_reads2)
+```
+
+
 
 # Filter and Trim Reads
 ```{r Filter-trim-2022}
@@ -208,18 +213,18 @@ preQC_aggregate_plot2 / postQC_aggregate_plot2
 ```{r learn-errors-2022, fig.width=12, fig.height=8}
 # Forward reads 
 error_forward_reads2 <- 
-  learnErrors(filtered_forward_reads2, multithread = TRUE)
+  learnErrors(filtered_forward_reads2, multithread = 5)
 # Plot Forward  
 forward_error_plot2 <- 
-  plotErrors(error_forward_reads2, nominalQ = TRUE) + 
+  plotErrors(error_forward_reads2, nominalQ = 5) + 
   labs(title = "Forward Read Error Model 2022")
 
 # Reverse reads 
 error_reverse_reads2 <- 
-  learnErrors(filtered_reverse_reads2, multithread = TRUE)
+  learnErrors(filtered_reverse_reads2, multithread = 5)
 # Plot reverse
 reverse_error_plot2 <- 
-  plotErrors(error_reverse_reads2, nominalQ = TRUE) + 
+  plotErrors(error_reverse_reads2, nominalQ = 5) + 
   labs(title = "Reverse Read Error Model 2022")
 
 # Put the two plots together
@@ -228,6 +233,14 @@ forward_error_plot2 + reverse_error_plot2
 
 The black lines and dots seem to overlap.  And the red lines are negative
 
+- The error rates for each possible transition (A→C, A→G, …) are shown in the plot above. 
+
+Details of the plot: 
+- **Points**: The observed error rates for each consensus quality score.  
+- **Black line**: Estimated error rates after convergence of the machine-learning algorithm.  
+- **Red line:** The error rates expected under the nominal definition of the Q-score.  
+
+Similar to what is mentioned in the dada2 tutorial: the estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
 
 # Infer ASVs 
 
@@ -251,6 +264,7 @@ dada_reverse2 <- dada(filtered_reverse_reads2,
 
 # Inspect 
 dada_reverse2[1]
+dada_reverse2[30]
 ```
 
 # Merge Forward & Reverse ASVs
@@ -800,17 +814,6 @@ track_counts_df3 %>%
   theme_bw()
 ```
 
-# Make a track read counts that merges both 2022 and 2023 data
-
-```{r combine-track-reads}
-str(track_counts_df2)
-colnames(track_counts_df2)
-colnames(track_counts_df3)
-track_read_counts <- rbind(track_counts_df2, track_counts_df3)
-save(track_read_counts, file = "data/01_DADA2/track_read_counts.RData")
-```
-
-
 # Merge the 2022 and 2023 ASV tables (no chimeras)
 
 ```{r merge-asv-tables}
@@ -955,7 +958,7 @@ write.table(asv_tax, "data/01_DADA2/ASV_taxonomy.tsv", sep = "\t", quote = FALSE
 save(noChimeras_ASV_table, file = "data/01_DADA2/noChimeras_ASV_table.RData")
 save(asv_tab, file = "data/01_DADA2/ASV_counts.RData")
 # And save the track_counts_df a R object, which we will merge with metadata information in the next step of the analysis in nalysis/02_Taxonomic_Assignment. 
-#save(track_counts_df, file = "data/01_DADA2/track_read_counts.RData")
+save(track_counts_df, file = "data/01_DADA2/track_read_counts.RData")
 ```
 
 # Session Information 
