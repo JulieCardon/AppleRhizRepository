@@ -48,7 +48,7 @@ head(asv_tab)[,1:5]
 
 # Fix names 
 sample_names <- colnames(asv_tab)
-samples_fixed <- sapply(strsplit(basename(sample_names), "_"), `[`,1) 
+samples_fixed <- apply(sapply(strsplit(basename(sample_names), "_"), `[`,1:2), 2, paste, collapse  = "_" )
 head(samples_fixed)
 
 # re-write the ASV count file to fix names 
@@ -84,23 +84,21 @@ dim(track_read_counts)
 
 # Please in the terminal copy metadata.csv 
 # into: SalinityGradient_16S/data 
-# from: /workdir/in_class_data/SalinityGradient_16S/metadata.csv
+# from: /workdir/jmc753/git_repos/AppleRhizRepository/data/metadata.csv
 
 # Load in metadata
-rm(metadata_df)
-metadata_df <- read.csv("data/metadata.csv")
+metadata_df <- read.csv("data/JulieCardonMetadata.csv")
 dim(metadata_df)
 colnames(metadata_df)
 
 
 # Merge metadata_df with track_reads_df 
 head(metadata_df)
-head(track_counts_df)
+head(track_read_counts)
 
 metadata_track_reads_df <- 
   metadata_df %>%
-  left_join(., track_counts_df, by = "names") %>%
-  dplyr::select(-X)
+  left_join(., track_read_counts, by = c("Sample" = "names"))
 
 # Intuition check 
 head(metadata_track_reads_df)
@@ -109,7 +107,7 @@ head(metadata_track_reads_df)
 ## Before 
 row.names(metadata_track_reads_df)
 # Rewrite 
-row.names(metadata_track_reads_df) <- metadata_track_reads_df$names
+row.names(metadata_track_reads_df) <- metadata_track_reads_df$Sample
 # Check afterwards that it worked 
 row.names(metadata_track_reads_df)
 # intuition check
@@ -159,9 +157,9 @@ num_chloro_ASVs
 
 # Intuition chek 
 #noChloros_physeq %>%
-#  tax_table() %>%
-#  data.frame() %>%
-#  View()
+ # tax_table() %>%
+  #data.frame() %>%
+  #View()
 
 # remove mitochondria 
 noChlorosMitos_physeq <- 
@@ -179,6 +177,7 @@ ntaxa(raw_physeq) - ntaxa(noChlorosMitos_physeq)
 # proportion of asvs kept? 
 ntaxa(noChlorosMitos_physeq)/ntaxa(raw_physeq)
 ```
+## Kept 99% of the taxa
 
 # Evaluate the Sequencing Depth 
 
@@ -193,8 +192,8 @@ seqSums_df <-
   # Sum each sample column 
   colSums() %>%
   data.frame() %>%
-  rownames_to_column(var = "names") %>%
-  left_join(., metadata_track_reads_df, by = "names") 
+  rownames_to_column(var = "Sample") %>%
+  left_join(., metadata_track_reads_df, by = "Sample") 
 
 # Rename second column 
 colnames(seqSums_df)[2] <- "TotalSeqs"
@@ -205,19 +204,19 @@ head(seqSums_df)
 
 # Show the depth of samples 
 seqSums_df %>%
-  dplyr::select(names, TotalSeqs) %>%
+  dplyr::select(Sample, TotalSeqs) %>%
   arrange(TotalSeqs) %>%
   head()
 
 # plot it! 
 seqSums_df %>%
-  ggplot(aes(x=reorder(names, TotalSeqs), y = TotalSeqs,
-             fill = station)) + 
+  ggplot(aes(x=reorder(Sample, TotalSeqs), y = TotalSeqs,
+             fill = Rootstock)) + 
   geom_bar(stat = "identity") 
 
 # Density plot 
 seqSums_df %>%
-  ggplot(aes(TotalSeqs, fill = station)) +
+  ggplot(aes(TotalSeqs, fill = Rootstock)) +
   geom_density(alpha = 0.5)
 ```
 

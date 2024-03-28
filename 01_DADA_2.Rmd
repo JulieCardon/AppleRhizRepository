@@ -233,14 +233,6 @@ forward_error_plot2 + reverse_error_plot2
 
 The black lines and dots seem to overlap.  And the red lines are negative
 
-- The error rates for each possible transition (A→C, A→G, …) are shown in the plot above. 
-
-Details of the plot: 
-- **Points**: The observed error rates for each consensus quality score.  
-- **Black line**: Estimated error rates after convergence of the machine-learning algorithm.  
-- **Red line:** The error rates expected under the nominal definition of the Q-score.  
-
-Similar to what is mentioned in the dada2 tutorial: the estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
 
 # Infer ASVs 
 
