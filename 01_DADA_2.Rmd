@@ -128,12 +128,6 @@ filtered_reverse_reads2 <-
 length(filtered_reverse_reads2)
 ```
 
-```{r}
-table(filtered_forward_reads2)
-```
-
-
-
 # Filter and Trim Reads
 ```{r Filter-trim-2022}
 filtered_reads2<-filterAndTrim(forward_reads2, filtered_forward_reads2,
@@ -183,7 +177,6 @@ postQC_aggregate_plot2
 
 Here, we see the sequences are improved from before. The very low quality that we saw in the pre-QC plots is mostly gone. There is some low quality towards the end, but it will hopefully overlap with the good quality sections of the opposite read. 
 
-
 ## Stats on read output from `filterAndTrim`
 
 ```{r filterTrim-stats-2022}
@@ -232,7 +225,6 @@ forward_error_plot2 + reverse_error_plot2
 ```
 
 The black lines and dots seem to overlap.  And the red lines are negative
-
 
 # Infer ASVs 
 
@@ -308,8 +300,7 @@ data.frame(Seq_Length = nchar(getSequences(raw_ASV_table2))) %>%
 ###################################################
 ###################################################
 # TRIM THE ASVS
-# Let's trim the ASVs to only be the right size, which is 249.
-# 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
+# Let's trim the ASVs to only be the right size, which is somewhere in the neighborhood of 400 (its from the v3 v4 region, which can vary in length depending on the taxon)
 ``` {r trim-ASVs-2022}
 # We will allow for a few 
 raw_ASV_table_trimmed2 <- raw_ASV_table2[,nchar(colnames(raw_ASV_table2)) %in% 399:436]
@@ -582,21 +573,7 @@ The  quality improved after trimming and filtering.
 
 # Error Modelling 
 
-**Note every sequencing run needs to be run separately!** The error model *MUST* be run separately on each Illumina dataset. This is because every Illumina run is different, even if the flow cell and DNA/samples are the same. If you'd like to combine the datasets from multiple Illumina sequencing runs, you'll need to do the exact same `filterAndTrim()` step *AND*, very importantly, you'll need to have the same primer/ASV length/16S location expected by the output. 
-
-*But wait: what contributes to sequencing error in different sequencing runs and why do we need to model errors separately per run with learnErrors() in dada2?* Remember the core principles of how Illumina seuqencing works! Some things that contribute to this are:  
-
--Different timings for when clusters go out of sync (drop in quality at end of reads that's typical of Illumina sequencing)
-- The cluster density is impossible to exactly replicate. Therefore, the cluster density (and therefore sequence quality) will always be different between sequencing runs (even if it's the same person/samples/sequencing facility!). 
--PhiX spike-in will also vary between runs, even if we try to make it the same! Therefore, the amount of heterogeneity on the flow cell will also be different, impacting the quality.  
--Different locations on the flow cell can be impacted differently between runs. Perhaps an air bubble can get in, the cluster density happened to be higher/lower on a different run/flow cell.
-
-Ok, that said. Let's now infer error rates for all possible transitions within purines and pyrimidines (A<>G or C<>T) and transversions between all purine and pyrimidine combinations. The error model is learned by alternating estimation of the error rates and inference of sample composition until they converge. This specifically:  
-
-1. Starts with the assumption that the error rates are the maximum (takes the most abundant sequence ("center") and assumes it's the only sequence not caused by errors).  
-2. Compares the other sequences to the most abundant sequence. 
-3. Uses at most 10^8^ nucleotides for the error estimation.  
-4. Uses parametric error estimation function of loess fit on the observed error rates. 
+**Note every sequencing run needs to be run separately!** The error model was run separately on each Illumina dataset. This is because every Illumina run is different, even if the flow cell and DNA/samples are the same. I am doing the exact same `filterAndTrim()` step *AND*, very importantly, you'll have the same primer/ASV length/16S location expected by the output. 
 
 ## Learn the errors 
 ```{r learn-errors-2023, fig.width=12, fig.height=8}
@@ -621,13 +598,7 @@ forward_error_plot3 + reverse_error_plot3
 ```
 
 The dots more or less align with the black lines, though there are a couple of outliers.  
-
-Details of the plot: 
-- **Points**: The observed error rates for each consensus quality score.  
-- **Black line**: Estimated error rates after convergence of the machine-learning algorithm.  
-- **Red line:** The error rates expected under the nominal definition of the Q-score.  
-
-Similar to what is mentioned in the dada2 tutorial: the estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
+The estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
 
 # Infer ASVs 
 
@@ -700,8 +671,7 @@ data.frame(Seq_Length = nchar(getSequences(raw_ASV_table3))) %>%
 ###################################################
 ###################################################
 # TRIM THE ASVS
-# Let's trim the ASVs to only be the right size, which is 249.
-# 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
+# Let's trim the ASVs to only be the right size, which around 400.
 ``` {r trimming-ASVs-2023}
 # We will allow for a few 
 raw_ASV_table_trimmed3 <- raw_ASV_table3[,nchar(colnames(raw_ASV_table3)) %in% 399:436]
@@ -805,6 +775,7 @@ track_counts_df3 %>%
   labs(x = "Filtering Step", y = "Number of Sequences") + 
   theme_bw()
 ```
+# There is a steep line in s
 
 # Merge the 2022 and 2023 ASV tables (no chimeras)
 
@@ -875,7 +846,7 @@ asv_tab <- t(noChimeras_ASV_table)
 
 ## Rename our asvs! 
 row.names(asv_tab) <- sub(">", "", asv_headers)
-View(asv_tab)
+#View(asv_tab)
 ```
 
 ## 2. Taxonomy Table 
@@ -950,7 +921,7 @@ write.table(asv_tax, "data/01_DADA2/ASV_taxonomy.tsv", sep = "\t", quote = FALSE
 save(noChimeras_ASV_table, file = "data/01_DADA2/noChimeras_ASV_table.RData")
 save(asv_tab, file = "data/01_DADA2/ASV_counts.RData")
 # And save the track_counts_df a R object, which we will merge with metadata information in the next step of the analysis in nalysis/02_Taxonomic_Assignment. 
-save(track_counts_df, file = "data/01_DADA2/track_read_counts.RData")
+save(track_read_counts, file = "data/01_DADA2/track_read_counts.RData")
 ```
 
 # Session Information 
