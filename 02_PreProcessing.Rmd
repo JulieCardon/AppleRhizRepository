@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
-                      fig.path = "../figures/02_PreProcessing/") # send any figure output to this folder 
+                      fig.path = "./figures/02_PreProcessing/") # send any figure output to this folder 
 ```
 
 # Load libraries 
@@ -235,7 +235,7 @@ raw_preprocessed_physeq <-
 raw_preprocessed_physeq_2022 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2022) %>%
   subset_samples(., Sample != "G11_2022")
 raw_preprocessed_physeq_2023 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2023)
-
+#View(raw_preprocessed_physeq_2022)
 #What's the new min seq depth?
 min(sample_sums(raw_preprocessed_physeq))
 min(sample_sums(raw_preprocessed_physeq_2022))

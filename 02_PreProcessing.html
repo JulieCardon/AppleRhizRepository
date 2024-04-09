@@ -512,19 +512,19 @@ head(track_read_counts)</code></pre>
 # Load in metadata
 metadata_df &lt;- read.csv(&quot;data/JulieCardonMetadata.csv&quot;)
 dim(metadata_df)</code></pre>
-<pre><code>## [1] 168   6</code></pre>
+<pre><code>## [1] 168   7</code></pre>
 <pre class="r"><code>colnames(metadata_df)</code></pre>
 <pre><code>## [1] &quot;Sample&quot;        &quot;Rootstock&quot;     &quot;SeqSample&quot;     &quot;TreeNumber&quot;   
-## [5] &quot;YearSampled&quot;   &quot;SequencingRun&quot;</code></pre>
+## [5] &quot;YearSampled&quot;   &quot;SequencingRun&quot; &quot;ARD&quot;</code></pre>
 <pre class="r"><code># Merge metadata_df with track_reads_df 
 head(metadata_df)</code></pre>
-<pre><code>##    Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun
-## 1 B1_2022      Bud9        B1          8        2022             1
-## 2 B2_2022      Bud9        B2         83        2022             1
-## 3 B3_2022      Bud9        B3        131        2022             1
-## 4 B4_2022      Bud9        B4        170        2022             1
-## 5 B5_2022      Bud9        B5        221        2022             1
-## 6 B6_2022     Bud10        B6         23        2022             1</code></pre>
+<pre><code>##    Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun         ARD
+## 1 B1_2022      Bud9        B1          8        2022             1 susceptible
+## 2 B2_2022      Bud9        B2         83        2022             1 susceptible
+## 3 B3_2022      Bud9        B3        131        2022             1 susceptible
+## 4 B4_2022      Bud9        B4        170        2022             1 susceptible
+## 5 B5_2022      Bud9        B5        221        2022             1 susceptible
+## 6 B6_2022     Bud10        B6         23        2022             1 susceptible</code></pre>
 <pre class="r"><code>head(track_read_counts)</code></pre>
 <pre><code>##      names  input filtered denoisedF denoisedR merged nochim
 ## 1  B4_2022 204642   112427    101351    102867  49691  40036
@@ -546,20 +546,20 @@ head(metadata_df)</code></pre>
 
 # Intuition check 
 head(metadata_track_reads_df)</code></pre>
-<pre><code>##    Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun  input
-## 1 B1_2022      Bud9        B1          8        2022             1 129044
-## 2 B2_2022      Bud9        B2         83        2022             1 148503
-## 3 B3_2022      Bud9        B3        131        2022             1 219267
-## 4 B4_2022      Bud9        B4        170        2022             1 204642
-## 5 B5_2022      Bud9        B5        221        2022             1 204281
-## 6 B6_2022     Bud10        B6         23        2022             1 151705
-##   filtered denoisedF denoisedR merged nochim perc_reads_retained
-## 1    79181     72646     73492  46793  34449            26.69555
-## 2    85348     76613     78268  41378  34795            23.43050
-## 3   123536    110068    111985  50890  42506            19.38550
-## 4   112427    101351    102867  49691  40036            19.56392
-## 5   122573    109117    111626  55220  45041            22.04855
-## 6    89926     81085     81753  41666  35174            23.18579</code></pre>
+<pre><code>##    Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun         ARD
+## 1 B1_2022      Bud9        B1          8        2022             1 susceptible
+## 2 B2_2022      Bud9        B2         83        2022             1 susceptible
+## 3 B3_2022      Bud9        B3        131        2022             1 susceptible
+## 4 B4_2022      Bud9        B4        170        2022             1 susceptible
+## 5 B5_2022      Bud9        B5        221        2022             1 susceptible
+## 6 B6_2022     Bud10        B6         23        2022             1 susceptible
+##    input filtered denoisedF denoisedR merged nochim perc_reads_retained
+## 1 129044    79181     72646     73492  46793  34449            26.69555
+## 2 148503    85348     76613     78268  41378  34795            23.43050
+## 3 219267   123536    110068    111985  50890  42506            19.38550
+## 4 204642   112427    101351    102867  49691  40036            19.56392
+## 5 204281   122573    109117    111626  55220  45041            22.04855
+## 6 151705    89926     81085     81753  41666  35174            23.18579</code></pre>
 <pre class="r"><code># Update row.names to be sample names 
 ## Before 
 row.names(metadata_track_reads_df)</code></pre>
@@ -617,20 +617,27 @@ row.names(metadata_track_reads_df)</code></pre>
 ## [166] &quot;3S3B_2023&quot;  &quot;3S4B_2023&quot;  &quot;3S5B_2023&quot;</code></pre>
 <pre class="r"><code># intuition check
 head(metadata_track_reads_df)</code></pre>
-<pre><code>##          Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun  input
-## B1_2022 B1_2022      Bud9        B1          8        2022             1 129044
-## B2_2022 B2_2022      Bud9        B2         83        2022             1 148503
-## B3_2022 B3_2022      Bud9        B3        131        2022             1 219267
-## B4_2022 B4_2022      Bud9        B4        170        2022             1 204642
-## B5_2022 B5_2022      Bud9        B5        221        2022             1 204281
-## B6_2022 B6_2022     Bud10        B6         23        2022             1 151705
-##         filtered denoisedF denoisedR merged nochim perc_reads_retained
-## B1_2022    79181     72646     73492  46793  34449            26.69555
-## B2_2022    85348     76613     78268  41378  34795            23.43050
-## B3_2022   123536    110068    111985  50890  42506            19.38550
-## B4_2022   112427    101351    102867  49691  40036            19.56392
-## B5_2022   122573    109117    111626  55220  45041            22.04855
-## B6_2022    89926     81085     81753  41666  35174            23.18579</code></pre>
+<pre><code>##          Sample Rootstock SeqSample TreeNumber YearSampled SequencingRun
+## B1_2022 B1_2022      Bud9        B1          8        2022             1
+## B2_2022 B2_2022      Bud9        B2         83        2022             1
+## B3_2022 B3_2022      Bud9        B3        131        2022             1
+## B4_2022 B4_2022      Bud9        B4        170        2022             1
+## B5_2022 B5_2022      Bud9        B5        221        2022             1
+## B6_2022 B6_2022     Bud10        B6         23        2022             1
+##                 ARD  input filtered denoisedF denoisedR merged nochim
+## B1_2022 susceptible 129044    79181     72646     73492  46793  34449
+## B2_2022 susceptible 148503    85348     76613     78268  41378  34795
+## B3_2022 susceptible 219267   123536    110068    111985  50890  42506
+## B4_2022 susceptible 204642   112427    101351    102867  49691  40036
+## B5_2022 susceptible 204281   122573    109117    111626  55220  45041
+## B6_2022 susceptible 151705    89926     81085     81753  41666  35174
+##         perc_reads_retained
+## B1_2022            26.69555
+## B2_2022            23.43050
+## B3_2022            19.38550
+## B4_2022            19.56392
+## B5_2022            22.04855
+## B6_2022            23.18579</code></pre>
 </div>
 </div>
 <div id="handoff-to-phyloseq" class="section level1">
@@ -650,7 +657,7 @@ raw_physeq &lt;- phyloseq(otu_table(asv_tab, taxa_are_rows = TRUE),
 raw_physeq</code></pre>
 <pre><code>## phyloseq-class experiment-level object
 ## otu_table()   OTU Table:         [ 65070 taxa and 168 samples ]
-## sample_data() Sample Data:       [ 168 samples by 13 sample variables ]
+## sample_data() Sample Data:       [ 168 samples by 14 sample variables ]
 ## tax_table()   Taxonomy Table:    [ 65070 taxa by 9 taxonomic ranks ]</code></pre>
 <pre class="r"><code># Save this raw phyloseq object 
 save(raw_physeq, file = &quot;data/02_PreProcessing/raw_physeq.RData&quot;)</code></pre>
@@ -693,7 +700,7 @@ num_mito_ASVs</code></pre>
 <pre class="r"><code>noChlorosMitos_physeq</code></pre>
 <pre><code>## phyloseq-class experiment-level object
 ## otu_table()   OTU Table:         [ 64993 taxa and 168 samples ]
-## sample_data() Sample Data:       [ 168 samples by 13 sample variables ]
+## sample_data() Sample Data:       [ 168 samples by 14 sample variables ]
 ## tax_table()   Taxonomy Table:    [ 64993 taxa by 9 taxonomic ranks ]</code></pre>
 <pre class="r"><code># How many total asvs were removed from chloros and mitos 
 ntaxa(raw_physeq) - ntaxa(noChlorosMitos_physeq)</code></pre>
@@ -711,7 +718,7 @@ ntaxa(noChlorosMitos_physeq)/ntaxa(raw_physeq)</code></pre>
 noChlorosMitos_physeq</code></pre>
 <pre><code>## phyloseq-class experiment-level object
 ## otu_table()   OTU Table:         [ 64993 taxa and 168 samples ]
-## sample_data() Sample Data:       [ 168 samples by 13 sample variables ]
+## sample_data() Sample Data:       [ 168 samples by 14 sample variables ]
 ## tax_table()   Taxonomy Table:    [ 64993 taxa by 9 taxonomic ranks ]</code></pre>
 <pre class="r"><code># What is the library size/sequencing depth for each sample? 
 seqSums_df &lt;- 
@@ -728,7 +735,7 @@ colnames(seqSums_df)[2] &lt;- &quot;TotalSeqs&quot;
 
 # check
 dim(seqSums_df)</code></pre>
-<pre><code>## [1] 168  14</code></pre>
+<pre><code>## [1] 168  15</code></pre>
 <pre class="r"><code>head(seqSums_df)</code></pre>
 <pre><code>##     Sample TotalSeqs Rootstock SeqSample TreeNumber YearSampled SequencingRun
 ## 1  B4_2022     40034      Bud9        B4        170        2022             1
@@ -737,13 +744,20 @@ dim(seqSums_df)</code></pre>
 ## 4 G18_2022     43520      G213       G18        110        2022             1
 ## 5 G26_2022     43751      G935       G26         17        2022             1
 ## 6 G34_2022     51134      G969       G34        146        2022             1
-##    input filtered denoisedF denoisedR merged nochim perc_reads_retained
-## 1 204642   112427    101351    102867  49691  40036            19.56392
-## 2 175656   109157    102083    103425  70602  47717            27.16503
-## 3 138589    77975     71007     71865  39993  29183            21.05723
-## 4 202865   119851    107107    110202  56371  43523            21.45417
-## 5 202611   123029    109378    112531  54767  43778            21.60692
-## 6 188583   117244    107780    109563  66612  51152            27.12440</code></pre>
+##           ARD  input filtered denoisedF denoisedR merged nochim
+## 1 susceptible 204642   112427    101351    102867  49691  40036
+## 2     partial 175656   109157    102083    103425  70602  47717
+## 3     partial 138589    77975     71007     71865  39993  29183
+## 4   resistant 202865   119851    107107    110202  56371  43523
+## 5   resistant 202611   123029    109378    112531  54767  43778
+## 6   resistant 188583   117244    107780    109563  66612  51152
+##   perc_reads_retained
+## 1            19.56392
+## 2            27.16503
+## 3            21.05723
+## 4            21.45417
+## 5            21.60692
+## 6            27.12440</code></pre>
 <pre class="r"><code># Show the depth of samples 
 seqSums_df %&gt;%
   dplyr::select(Sample, TotalSeqs) %&gt;%
@@ -782,7 +796,7 @@ raw_preprocessed_physeq &lt;-
 raw_preprocessed_physeq_2022 &lt;- raw_preprocessed_physeq %&gt;% subset_samples(YearSampled==2022) %&gt;%
   subset_samples(., Sample != &quot;G11_2022&quot;)
 raw_preprocessed_physeq_2023 &lt;- raw_preprocessed_physeq %&gt;% subset_samples(YearSampled==2023)
-
+#View(raw_preprocessed_physeq_2022)
 #What&#39;s the new min seq depth?
 min(sample_sums(raw_preprocessed_physeq))</code></pre>
 <pre><code>## [1] 559</code></pre>
@@ -814,7 +828,7 @@ devtools::session_info()</code></pre>
 ##  collate  en_US.UTF-8
 ##  ctype    en_US.UTF-8
 ##  tz       America/New_York
-##  date     2024-04-03
+##  date     2024-04-09
 ##  pandoc   3.1.1 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/ (via rmarkdown)
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────

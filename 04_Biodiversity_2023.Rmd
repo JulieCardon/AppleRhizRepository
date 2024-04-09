@@ -3,28 +3,229 @@ title: "04_Biodiversity_2023"
 author: "Julie Cardon"
 date: "2024-04-03"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.path = "../figures/04_Biodiversity/")
 ```
 
-## R Markdown
+# Setting the Environment 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## Set the seed 
+```{r set-seed}
+set.seed(19)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+## Load Libraries 
+```{r load-packages}
+pacman::p_load(tidyverse, devtools, patchwork, iNEXT, phyloseq,
+               install = FALSE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Load in Data 
+```{r load-data}
+#file.exists("data/02_PreProcessing/raw_preprocessed_physeq_2023.RData")- check the knit directory
+load("data/02_PreProcessing/raw_preprocessed_physeq_2023.RData")
+raw_preprocessed_physeq_2023
+
+# Intiution Check 
+min(sample_sums(raw_preprocessed_physeq_2023))
+
+# Make metadata dataframe
+metadata_df <-
+  raw_preprocessed_physeq_2023 %>%
+  sample_data() %>%
+  data.frame()
+
+head(metadata_df)
+
+# Setting colors for Rootstocks 
+Rootstock_colors <- c(
+  "Bud9" = "indianred",
+  "Bud10" = "burlywood3",
+  "G11" = "#D9CC3C",
+  "G41" = "#A0E0BA",
+  "G202" = "#00ADA7",
+  "G213" = "dodgerblue4",
+  "G890" = "khaki4",
+  "G935" = "honeydew3",
+  "G969" = "brown",
+  "M7" = "palegreen4",
+  "M9337" = "gold",
+  "M9Nic29" = "dodgerblue3",
+  "M9pajam2" = "peru",
+  "V1" = "plum4",
+  "G210" = "paleturquoise3",
+  "Soil" = "palevioletred")
+```
+
+
+# Goals
+
+1. Calculate the Hill Diversity of the samples. 
+2. Evaluate the rarefaction curves. 
+3. Evaluate the Diversity values. 
+4. Make notes of specific samples and their seq depth. 
+
+# Diversity Calculations with iNEXT 
+
+```{r calc-div}
+# prepare input data 
+iNEXT_input_df_2023 <- 
+  raw_preprocessed_physeq_2023 %>%
+  otu_table() %>%
+  data.frame()
+# Quick check
+dim(iNEXT_input_df_2023)
+
+# Run iNEXT: Calculate the Hill Numbers 
+# Note that: Species in ROWS, Samples in COLUMNS 
+# Remember to set the seed! 
+iNEXT_data_2023 <- iNEXT(iNEXT_input_df_2023, 
+                    q = c(0,1,2), datatype = "abundance")
+
+# Save the file
+save(iNEXT_data_2023, file = "data/04_Biodiversity/iNEXT_data_2023.RData")
+load("data/04_Biodiversity/iNEXT_data_2023.RData")
+```
+
+# Evaluate the Diversity! 
+```{r load-div}
+load("data/04_Biodiversity/iNEXT_data_2023.RData")
+str(iNEXT_data_2023)
+typeof(iNEXT_data_2023)
+```
+
+# Plot Diversity 
+```{r plot-rarefaction}
+# Prepare Colors 
+color_df_2023 <- 
+  iNEXT_input_df_2023 %>%
+  colnames() %>%
+  data.frame()
+# Check
+head(color_df_2023)
+# Rename the column 
+colnames(color_df_2023)[1] <- "Sample"
+# Check
+head(color_df_2023)
+#View(color_df_2023)
+
+# Make a helper dataframe for plotting with colors 
+iNEXT_color_df_2023 <- 
+  color_df_2023 %>% mutate(Sample = gsub(Sample, pattern = "X",  replace = "")) %>%
+  # Fix the names for merging (I don't think I need to fix my sample names)
+  mutate(Sample = gsub(Sample, pattern = "X",  replace = "")) %>%
+  # Merge with metadata
+  left_join(metadata_df, by = "Sample") %>%
+  # Merge with colors for plotting with ggiNEXT
+  left_join(data.frame(Rootstock_colors = Rootstock_colors,
+            Rootstock = names(Rootstock_colors)),
+            by = "Rootstock")
+View(iNEXT_color_df_2023)
+```
+
+# Plot Rarefaction with `ggiNEXT`
+
+```{r ggiNEXT, fig.width=8, fig.height=8}
+# Plot rarefaction! 
+# rarefaction/extrapolation curve, type = 1 
+
+# Order q: 
+  # 0 = Richness/ Number of Total taxa
+  # 1 = Exponential Shannon / Number of "Common" taxa
+  # 2 = Inverse Simpson / Number of "Dominant" taxa 
+
+ggiNEXT(iNEXT_data_2023, type = 1, facet.var = "Order.q") + 
+  facet_wrap(~Order.q, scales = "fixed") + 
+  scale_color_manual(values = iNEXT_color_df_2023$Rootstock_colors, guide = FALSE) + 
+  scale_fill_manual(values = iNEXT_color_df_2023$Rootstock_colors, guide = FALSE) + 
+  scale_shape_manual(values = base::rep(17, nsamples(raw_preprocessed_physeq_2023)),
+                     guide = FALSE) + 
+  theme(legend.position = "none")
+```
+
+
+# Manually plot Diversity 
+
+## Rarefaction
+```{r iNEXT-manual}
+
+iNEXT_manual_df_2023 <- 
+  iNEXT_data_2023$iNextEst$size_based %>%
+  dplyr::rename(Sample = Assemblage) %>%
+  # Fix the samples names 
+  mutate(Sample = gsub(Sample, pattern = "X", replace = "")) %>%
+  # join with metadata 
+  left_join(., metadata_df, by = "Sample") %>%
+  # Add colors to data frame
+  left_join(., data.frame(Rootstock_colors = Rootstock_colors,
+                          Rootstock = names(Rootstock_colors)),
+            by = "Rootstock") 
+# Inspect 
+dim(iNEXT_manual_df_2023)
+str(iNEXT_manual_df_2023)
+#View(iNEXT_manual_df_2023)
+
+# Plot it - Rarefaction Curve 
+iNEXT_manual_df_2023 %>%
+  # Filter out rows that are calcaulted by rarefaction from iNEXT
+  dplyr::filter(Method == "Extrapolation") %>%
+  # Make the actual rarefaction plot with 
+  # the # of sequences on the x-axis and diversity on the y-axis
+  # You can choose to pick one diversity value or plot all three 
+  ggplot(aes(x = m, y= qD, color = Rootstock, group = Sample)) + 
+  # line 
+  geom_line() + 
+  #geom_point() + 
+  # Challenge: Facet with the station
+  facet_grid(Order.q~Rootstock, scales = "fixed") + 
+  scale_color_manual(values = Rootstock_colors) + 
+  theme(legend.position = "bottom")
+```
+
+
+# Environmental Variable Check 
+
+```{r environmental-pairs, fig.width=8, fig.height=8}
+#head(metadata_df)
+# Pull out environmental variables 
+#env_df <- 
+  #metadata_df %>%
+  #dplyr::select(names, water_tempC:DO_mgL)
+# inspect
+#head(env_df)
+
+# plot the correlations
+#pairs(dplyr::select(env_df, -names), upper.panel = NULL) 
+```
+
+# Diversity vs Salinity 
+
+```{r div-vs-salinity, fig.height=3.5, fig.width=6}
+# PSU  = practical salinity unit 
+# 1 PSU = 1 g of salt per 1,000 grams of water
+# 1 PSU = 1 ppt (part per thousand)
+# Freshwater = 0-0.5
+# brackish = 0.5 - 30
+# Marine = >30
+
+#iNEXT_manual_df %>%
+  #dplyr::filter(Method == "Observed") %>%
+  #ggplot(aes(x = salinity_psu, y = qD)) + 
+  #facet_wrap(.~Order.q, scales = "free") + 
+  #geom_point(aes(color = station)) + 
+  #stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
+  #labs(x = "Salinity (PSU)", y = "# of ASVs") + 
+  #scale_color_manual(values = station_colors) + 
+  #theme(legend.position = "bottom")
+```
+
+# Session Information
+```{r session-info}
+devtools::session_info()
+```
+

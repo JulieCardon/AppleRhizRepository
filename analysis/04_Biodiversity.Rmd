@@ -3,6 +3,8 @@ title: "Biodiversity"
 author: "Julie Cardon"
 date: "2024-03-29"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -25,6 +27,7 @@ pacman::p_load(tidyverse, devtools, patchwork, iNEXT, phyloseq,
 
 ## Load in Data 
 ```{r load-data}
+#file.exists("data/02_PreProcessing/raw_preprocessed_physeq.RData")- check the knit directory
 load("data/02_PreProcessing/raw_preprocessed_physeq.RData")
 raw_preprocessed_physeq
 
@@ -38,14 +41,25 @@ metadata_df <-
   data.frame()
 
 head(metadata_df)
-
-# Setting colors for stations 
-station_colors <- c(
-  "Shipping Channel" = "dodgerblue4",
-  "Aransas Bay" = "dodgerblue2",
-  "Copano West" = "#D9CC3C",
-  "Copano East" = "#A0E0BA",
-  "Mesquite Bay" = "#00ADA7")
+View(metadata_df)
+# Setting colors for Rootstocks 
+Rootstock_colors <- c(
+  "Bud9" = "indianred",
+  "Bud10" = "burlywood3",
+  "G11" = "#D9CC3C",
+  "G41" = "#A0E0BA",
+  "G202" = "#00ADA7",
+  "G213" = "dodgerblue4",
+  "G890" = "khaki4",
+  "G935" = "honeydew3",
+  "G969" = "brown",
+  "M7" = "palegreen4",
+  "M9337" = "gold",
+  "M9Nic29" = "dodgerblue3",
+  "M9pajam2" = "peru",
+  "V1" = "plum4",
+  "G210" = "paleturquoise3",
+  "Soil" = "palevioletred")
 ```
 
 
@@ -54,7 +68,7 @@ station_colors <- c(
 1. Calculate the Hill Diversity of the samples. 
 2. Evaluate the rarefaction curves. 
 3. Evaluate the Diversity values. 
-4. Makes notes of specific samples and their seq depth. 
+4. Make notes of specific samples and their seq depth. 
 
 # Diversity Calculations with iNEXT 
 
@@ -70,11 +84,12 @@ dim(iNEXT_input_df)
 # Run iNEXT: Calculate the Hill Numbers 
 # Note that: Species in ROWS, Samples in COLUMNS 
 # Remember to set the seed! 
-#iNEXT_data <- iNEXT(iNEXT_input_df, 
-#                    q = c(0,1,2), datatype = "abundance")
+iNEXT_data <- iNEXT(iNEXT_input_df, 
+                    q = c(0,1,2), datatype = "abundance")
 
 # Save the file
-#save(iNEXT_data, file = "data/04_Biodiversity/iNEXT_data.RData")
+save(iNEXT_data, file = "data/04_Biodiversity/iNEXT_data.RData")
+load("data/04_Biodiversity/iNEXT_data.RData")
 ```
 
 # Evaluate the Diversity! 
@@ -94,28 +109,29 @@ color_df <-
 # Check
 head(color_df)
 # Rename the column 
-colnames(color_df)[1] <- "names"
+colnames(color_df)[1] <- "Sample"
 # Check
 head(color_df)
-
+#View(color_df)
 
 # Make a helper dataframe for plotting with colors 
 iNEXT_color_df <- 
-  color_df %>%
-  # Fix the names for merging
-  mutate(names = gsub(names, pattern = "[.]", replace = "-"),
-         names = gsub(names, pattern = "X",  replace = "")) %>%
+  color_df %>% mutate(Sample = gsub(Sample, pattern = "X",  replace = "")) %>%
+  # Fix the names for merging (I don't think I need to fix my sample names)
+  #mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+        #names = gsub(names, pattern = "X",  replace = "")) %>%
   # Merge with metadata
-  left_join(metadata_df, by = "names") %>%
+  left_join(metadata_df, by = "Sample") %>%
   # Merge with colors for plotting with ggiNEXT
-  left_join(data.frame(station_colors = station_colors,
-            station = names(station_colors)),
-            by = "station")
+  left_join(data.frame(Rootstock_colors = Rootstock_colors,
+            Rootstock = names(Rootstock_colors)),
+            by = "Rootstock")
+View(iNEXT_color_df)
 ```
 
 # Plot Rarefaction with `ggiNEXT`
 
-```{r ggiNEXT, fig.width=8, fig.height=3.5}
+```{r ggiNEXT, fig.width=8, fig.height=8}
 # Plot rarefaction! 
 # rarefaction/extrapolation curve, type = 1 
 
@@ -126,8 +142,8 @@ iNEXT_color_df <-
 
 ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") + 
   facet_wrap(~Order.q, scales = "fixed") + 
-  scale_color_manual(values = iNEXT_color_df$station_colors, guide = FALSE) + 
-  scale_fill_manual(values = iNEXT_color_df$station_colors, guide = FALSE) + 
+  scale_color_manual(values = iNEXT_color_df$Rootstock_colors, guide = FALSE) + 
+  scale_fill_manual(values = iNEXT_color_df$Rootstock_colors, guide = FALSE) + 
   scale_shape_manual(values = base::rep(17, nsamples(raw_preprocessed_physeq)),
                      guide = FALSE) + 
   theme(legend.position = "none")
@@ -141,19 +157,19 @@ ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") +
 
 iNEXT_manual_df <- 
   iNEXT_data$iNextEst$size_based %>%
-  dplyr::rename(names = Assemblage) %>%
+  dplyr::rename(Sample = Assemblage) %>%
   # Fix the samples names 
-  mutate(names = gsub(names, pattern = "[.]", replace = "-"),
-         names = gsub(names, pattern = "X", replace = "")) %>%
+  mutate(Sample = gsub(Sample, pattern = "X", replace = "")) %>%
   # join with metadata 
-  left_join(., metadata_df, by = "names") %>%
+  left_join(., metadata_df, by = "Sample") %>%
   # Add colors to data frame
-  left_join(., data.frame(station_colors = station_colors,
-                          station = names(station_colors)),
-            by = "station") 
+  left_join(., data.frame(Rootstock_colors = Rootstock_colors,
+                          Rootstock = names(Rootstock_colors)),
+            by = "Rootstock") 
 # Inspect 
 dim(iNEXT_manual_df)
 str(iNEXT_manual_df)
+#View(iNEXT_manual_df)
 
 # Plot it - Rarefaction Curve 
 iNEXT_manual_df %>%
@@ -162,16 +178,86 @@ iNEXT_manual_df %>%
   # Make the actual rarefaction plot with 
   # the # of sequences on the x-axis and diversity on the y-axis
   # You can choose to pick one diversity value or plot all three 
-  ggplot(aes(x = m, y= qD, color = station, group = names)) + 
+  ggplot(aes(x = m, y= qD, color = Rootstock, group = Sample)) + 
   # line 
   geom_line() + 
   #geom_point() + 
   # Challenge: Facet with the station
-  facet_grid(Order.q~station, scales = "fixed") + 
-  scale_color_manual(values = station_colors) + 
+  facet_grid(Order.q~Rootstock, scales = "fixed") + 
+  scale_color_manual(values = Rootstock_colors) + 
   theme(legend.position = "bottom")
 ```
 
+
+# Environmental Variable Check 
+
+```{r environmental-pairs, fig.width=8, fig.height=8}
+#head(metadata_df)
+# Pull out environmental variables 
+#env_df <- 
+  #metadata_df %>%
+  #dplyr::select(names, water_tempC:DO_mgL)
+# inspect
+#head(env_df)
+
+# plot the correlations
+#pairs(dplyr::select(env_df, -names), upper.panel = NULL) 
+```
+
+# Diversity vs Salinity 
+
+```{r div-vs-salinity, fig.height=3.5, fig.width=6}
+# PSU  = practical salinity unit 
+# 1 PSU = 1 g of salt per 1,000 grams of water
+# 1 PSU = 1 ppt (part per thousand)
+# Freshwater = 0-0.5
+# brackish = 0.5 - 30
+# Marine = >30
+
+#iNEXT_manual_df %>%
+  #dplyr::filter(Method == "Observed") %>%
+  #ggplot(aes(x = salinity_psu, y = qD)) + 
+  #facet_wrap(.~Order.q, scales = "free") + 
+  #geom_point(aes(color = station)) + 
+  #stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
+  #labs(x = "Salinity (PSU)", y = "# of ASVs") + 
+  #scale_color_manual(values = station_colors) + 
+  #theme(legend.position = "bottom")
+```
+# Make a dataframe
+obs_div_df <- 
+  iNEXT_manual_df %>%
+  dplyr::filter(Method == "Observed") %>%
+  left_join(data.frame(station_names = station_names, 
+                       station = names(station_names)), 
+                       by = "station")
+
+# Check it 
+head(obs_div_df)
+```
+
+
+```{r div-boxplot, fig.height = 3.5, fig.width = 9}
+# Boxplots by station 
+obs_div_df %>%
+  ggplot(aes(x = station_names, y = qD, fill = station, color = station)) + 
+  facet_wrap(~Order.q, scales = "free") + 
+  geom_jitter(size = 2.5) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank())
+```
+
+We can draw that:  
+
+- Richness doesn't appear to be different between the stations, however, we might need to run a statistical test to check!  
+- **Mesquite Bay** appears to have the lowest Shannon and Simpson diversity, indicating that it has fewer common/dominant taxa compared to other communities.  
+- **Copano West** seems to have the highest Shannon and Simpson Diversity *and* the highest amount of variation. Though, we'd also need to follow this up with a test!  
 
 # Environmental Variable Check 
 
@@ -206,8 +292,19 @@ iNEXT_manual_df %>%
   stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
   labs(x = "Salinity (PSU)", y = "# of ASVs") + 
   scale_color_manual(values = station_colors) + 
-  theme(legend.position = "bottom")
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) 
 ```
+
+Here, there appears to be a few different results: 
+
+- There appears to be a negative & linear relationship between salinity and Richness. This indicates that freshwaters have the highest number of ASVs (genearlly around ~150 ASVs) and as we gain more and more salt in the water, there are fewer species (closer to ~125 ASVs)!  
+- Taking the Richness relationship above, we also need to note that there seems to be a high amount of variability within the brackish samples, 
+- Shannon & Simpson diversity appear to have a "U" shaped diversity curve!  
+- The "U" shape indicates that diversity measures that also weight relative abundance (common and dominant taxa) is highest at the two ends of the spectrum... this indicates that there are fewer dominant species in brackish waters.  
+
+
 
 # Session Information
 ```{r session-info}
