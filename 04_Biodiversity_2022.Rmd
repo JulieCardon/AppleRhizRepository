@@ -9,7 +9,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      fig.path = "../figures/04_Biodiversity/")
+                      fig.path = "./figures/04_Biodiversity/")
 ```
 
 # Setting the Environment 
@@ -73,19 +73,19 @@ Rootstock_colors <- c(
 # Diversity Calculations with iNEXT 
 
 ```{r calc-div}
-# prepare input data 
-#iNEXT_input_df_2022 <- 
-  #raw_preprocessed_physeq_2022 %>%
-  #otu_table() %>%
-  #data.frame()
+#prepare input data
+iNEXT_input_df_2022 <-
+  raw_preprocessed_physeq_2022 %>%
+  otu_table() %>%
+  data.frame()
 # Quick check
-#dim(iNEXT_input_df_2022)
+dim(iNEXT_input_df_2022)
 
-# Run iNEXT: Calculate the Hill Numbers 
-# Note that: Species in ROWS, Samples in COLUMNS 
-# Remember to set the seed! 
-#iNEXT_data_2022 <- iNEXT(iNEXT_input_df_2022, 
-                    #q = c(0,1,2), datatype = "abundance")
+# Run iNEXT: Calculate the Hill Numbers
+# Note that: Species in ROWS, Samples in COLUMNS
+# Remember to set the seed!
+# iNEXT_data_2022 <- iNEXT(iNEXT_input_df_2022,
+                   # q = c(0,1,2), datatype = "abundance")
 
 # Save the file
 #save(iNEXT_data_2022, file = "data/04_Biodiversity/iNEXT_data_2022.RData")
@@ -103,7 +103,7 @@ typeof(iNEXT_data_2022)
 ```{r plot-rarefaction}
 # Prepare Colors 
 color_df_2022 <- 
-  iNEXT_input_df %>%
+  iNEXT_input_df_2022 %>%
   colnames() %>%
   data.frame()
 # Check
@@ -121,12 +121,12 @@ iNEXT_color_df_2022 <-
   #mutate(names = gsub(names, pattern = "[.]", replace = "-"),
         #names = gsub(names, pattern = "X",  replace = "")) %>%
   # Merge with metadata
-  left_join(metadata_df, by = "Sample") %>%
+  left_join(metadata_df_2022, by = "Sample") %>%
   # Merge with colors for plotting with ggiNEXT
   left_join(data.frame(Rootstock_colors = Rootstock_colors,
             Rootstock = names(Rootstock_colors)),
             by = "Rootstock")
-View(iNEXT_color_df_2022)
+#View(iNEXT_color_df_2022)
 ```
 
 # Plot Rarefaction with `ggiNEXT`
@@ -149,6 +149,7 @@ ggiNEXT(iNEXT_data_2022, type = 1, facet.var = "Order.q") +
   theme(legend.position = "none")
 ```
 
+Most of the curves above 500 appear to level off, but the samples from the 2023 samping run (which had a very low sequencing depth and are below 500 on the species diversity scale), do not appear to have extrapolation curves.
 
 # Manually plot Diversity 
 
@@ -161,7 +162,7 @@ iNEXT_manual_df_2022 <-
   # Fix the samples names 
   mutate(Sample = gsub(Sample, pattern = "X", replace = "")) %>%
   # join with metadata 
-  left_join(., metadata_df, by = "Sample") %>%
+  left_join(., metadata_df_2022, by = "Sample") %>%
   # Add colors to data frame
   left_join(., data.frame(Rootstock_colors = Rootstock_colors,
                           Rootstock = names(Rootstock_colors)),
@@ -174,7 +175,7 @@ str(iNEXT_manual_df_2022)
 # Plot it - Rarefaction Curve 
 iNEXT_manual_df_2022 %>%
   # Filter out rows that are calcaulted by rarefaction from iNEXT
-  dplyr::filter(Method == "Extrapolation") %>%
+  dplyr::filter(Method == "Rarefaction") %>%
   # Make the actual rarefaction plot with 
   # the # of sequences on the x-axis and diversity on the y-axis
   # You can choose to pick one diversity value or plot all three 
@@ -183,11 +184,12 @@ iNEXT_manual_df_2022 %>%
   geom_line() + 
   #geom_point() + 
   # Challenge: Facet with the station
-  facet_grid(Order.q~Rootstock, scales = "fixed") + 
+  facet_grid(Order.q~Rootstock, scales = "free") + 
   scale_color_manual(values = Rootstock_colors) + 
   theme(legend.position = "bottom")
 ```
 
+It looks like the curves for richness (0) and to some extent Shannon (1) do not level off, so those measures might not be reliable.  The Simpson curves, even for the shallow samples do appear to level off, and so we may want to report that as our principal measure of biodiversity.
 
 # Environmental Variable Check 
 
@@ -207,20 +209,22 @@ Now, let's zoom in on a bit of a better view of the data by visualizing it in a 
 # Make a dataframe
 obs_div_df_2022 <- 
   iNEXT_manual_df_2022 %>%
-  dplyr::filter(Method == "Observed") %>%
-  left_join(data.frame(Rootstock_names = Rootstock_names, 
-                       Rootstock = names(Rootstock_names)), 
-                       by = "station")
+  dplyr::filter(Method == "Observed") #%>%
+  #left_join(data.frame(Rootstock_names = Rootstock_names, 
+                       # Rootstock = names(Rootstock_names)), 
+                       # by = "Rootstock")
 
 # Check it 
 head(obs_div_df_2022)
 ```
+# command shift c will comment out multiple lines
 
+# Compare the rhizosphere environment of the various rootstocks.
 
 ```{r div-boxplot, fig.height = 3.5, fig.width = 9}
-# Boxplots by station 
+# Boxplots by rootstock 
 obs_div_df_2022 %>%
-  ggplot(aes(x = Rootstock_names, y = qD, fill = Rootstock, color = Rootstock)) + 
+  ggplot(aes(x = Rootstock, y = qD, fill = Rootstock, color = Rootstock)) + 
   facet_wrap(~Order.q, scales = "free") + 
   geom_jitter(size = 2.5) + 
   geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
@@ -231,60 +235,31 @@ obs_div_df_2022 %>%
   theme(legend.position = "bottom",
         axis.title.x = element_blank(),
         legend.title = element_blank())
+
+# Boxplots by rootstock ARD resistance
+obs_div_df_2022 %>%
+  ggplot(aes(x = ARD, y = qD, fill = ARD, color = ARD)) + 
+  facet_wrap(~Order.q, scales = "free") + 
+  geom_jitter(size = 2.5) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  #scale_color_manual(values = Rootstock_colors) + 
+  #scale_fill_manual(values = Rootstock_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank())
+
+
+#Use a statistical test to verify comparisons
+
+
 ```
 
 We can draw that:  
 
-- Richness doesn't appear to be different between the stations, however, we might need to run a statistical test to check!  
-- **Mesquite Bay** appears to have the lowest Shannon and Simpson diversity, indicating that it has fewer common/dominant taxa compared to other communities.  
-- **Copano West** seems to have the highest Shannon and Simpson Diversity *and* the highest amount of variation. Though, we'd also need to follow this up with a test!  
-
-# Environmental Variable Check 
-
-```{r environmental-pairs, fig.width=8, fig.height=8}
-head(metadata_df)
-# Pull out environmental variables 
-env_df <- 
-  metadata_df %>%
-  dplyr::select(names, water_tempC:DO_mgL)
-# inspect
-head(env_df)
-
-# plot the correlations
-pairs(dplyr::select(env_df, -names), upper.panel = NULL) 
-```
-
-# Diversity vs Salinity 
-
-```{r div-vs-salinity, fig.height=3.5, fig.width=6}
-# PSU  = practical salinity unit 
-# 1 PSU = 1 g of salt per 1,000 grams of water
-# 1 PSU = 1 ppt (part per thousand)
-# Freshwater = 0-0.5
-# brackish = 0.5 - 30
-# Marine = >30
-
-iNEXT_manual_df %>%
-  dplyr::filter(Method == "Observed") %>%
-  ggplot(aes(x = salinity_psu, y = qD)) + 
-  facet_wrap(.~Order.q, scales = "free") + 
-  geom_point(aes(color = station)) + 
-  stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
-  labs(x = "Salinity (PSU)", y = "# of ASVs") + 
-  scale_color_manual(values = station_colors) + 
-  theme_bw() + 
-  theme(legend.position = "bottom",
-        legend.title = element_blank()) 
-```
-
-Here, there appears to be a few different results: 
-
-- There appears to be a negative & linear relationship between salinity and Richness. This indicates that freshwaters have the highest number of ASVs (genearlly around ~150 ASVs) and as we gain more and more salt in the water, there are fewer species (closer to ~125 ASVs)!  
-- Taking the Richness relationship above, we also need to note that there seems to be a high amount of variability within the brackish samples, 
-- Shannon & Simpson diversity appear to have a "U" shaped diversity curve!  
-- The "U" shape indicates that diversity measures that also weight relative abundance (common and dominant taxa) is highest at the two ends of the spectrum... this indicates that there are fewer dominant species in brackish waters.  
-
-
+- Next step is to run a statistical test to see if the differences between rootstocks are significant.  
+- Something that's apparent from both graphs is the contrast between soil biodiversity ('soil' or "NA") and rhizosphere (area directly influenced by the roots, all the rootstocks) biodiversity.  The soil samples had lower richness, but more evenness than the rhizosphere samples, which seemingly means there are fewer taxa overall in the soil per area, but also fewer dominant taxa-- the rhizosphere is a place of great diversity with a lot of rare taxa, but there are apparently some taxa that are much more abundant.  Rootstocks B.9 and B.10 seem to be exceptional in that they have high diversity and relatively high evenness.  These two rootstocks were bred in Russia, specifically for cold hardiness, so this is an interesting signal to process.
 
 # Session Information
 ```{r session-info}

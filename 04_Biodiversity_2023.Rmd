@@ -9,7 +9,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      fig.path = "../figures/04_Biodiversity/")
+                      fig.path = "./figures/04_Biodiversity/")
 ```
 
 # Setting the Environment 
@@ -173,7 +173,7 @@ str(iNEXT_manual_df_2023)
 # Plot it - Rarefaction Curve 
 iNEXT_manual_df_2023 %>%
   # Filter out rows that are calcaulted by rarefaction from iNEXT
-  dplyr::filter(Method == "Extrapolation") %>%
+  dplyr::filter(Method == "Rarefaction") %>%
   # Make the actual rarefaction plot with 
   # the # of sequences on the x-axis and diversity on the y-axis
   # You can choose to pick one diversity value or plot all three 
@@ -182,7 +182,7 @@ iNEXT_manual_df_2023 %>%
   geom_line() + 
   #geom_point() + 
   # Challenge: Facet with the station
-  facet_grid(Order.q~Rootstock, scales = "fixed") + 
+  facet_grid(Order.q~Rootstock, scales = "free_y") + 
   scale_color_manual(values = Rootstock_colors) + 
   theme(legend.position = "bottom")
 ```
