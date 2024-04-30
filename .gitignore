@@ -12,3 +12,8 @@
 01_DADA_2/data/rawfastqs/data_2022/*.fastq.gz
 01_DADA_2/data/rawfastqs/data_2023/*.fastq.gz
 data/01_DADA2/noChimeras_ASV_table.RData
+data/03_Phylogenetic_Tree/FastTree.log
+data/03_Phylogenetic_Tree/MAFFT_aligned_ASVs.fasta
+*.log
+data/03_Phylogenetic_Tree/MAFFT_aligned_ASVs_2022.fasta
+phytree_preprocessed_physeq.RData

@@ -1,0 +1,267 @@
+---
+title: "04_Biodiversity_2022"
+author: "Julie Cardon"
+date: "2024-04-03"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.path = "./figures/04_Biodiversity/")
+```
+
+# Setting the Environment 
+
+## Set the seed 
+```{r set-seed}
+set.seed(19)
+```
+
+## Load Libraries 
+```{r load-packages}
+pacman::p_load(tidyverse, devtools, patchwork, iNEXT, phyloseq,
+               install = FALSE)
+```
+
+## Load in Data 
+```{r load-data}
+#file.exists("data/02_PreProcessing/raw_preprocessed_physeq_2022.RData")- check the knit directory
+load("data/02_PreProcessing/raw_preprocessed_physeq_2022.RData")
+raw_preprocessed_physeq_2022
+
+# Intiution Check 
+min(sample_sums(raw_preprocessed_physeq_2022))
+
+# Make metadata dataframe
+metadata_df_2022 <-
+  raw_preprocessed_physeq_2022 %>%
+  sample_data() %>%
+  data.frame()
+
+head(metadata_df_2022)
+
+# Setting colors for Rootstocks 
+Rootstock_colors <- c(
+  "Bud9" = "indianred",
+  "Bud10" = "burlywood3",
+  "G11" = "#D9CC3C",
+  "G41" = "#A0E0BA",
+  "G202" = "#00ADA7",
+  "G213" = "dodgerblue4",
+  "G890" = "khaki4",
+  "G935" = "honeydew3",
+  "G969" = "brown",
+  "M7" = "palegreen4",
+  "M9337" = "gold",
+  "M9Nic29" = "dodgerblue3",
+  "M9pajam2" = "peru",
+  "V1" = "plum4",
+  "G210" = "paleturquoise3",
+  "Soil" = "palevioletred")
+```
+
+
+# Goals
+
+1. Calculate the Hill Diversity of the samples. 
+2. Evaluate the rarefaction curves. 
+3. Evaluate the Diversity values. 
+4. Make notes of specific samples and their seq depth. 
+
+# Diversity Calculations with iNEXT 
+
+```{r calc-div}
+#prepare input data
+iNEXT_input_df_2022 <-
+  raw_preprocessed_physeq_2022 %>%
+  otu_table() %>%
+  data.frame()
+# Quick check
+dim(iNEXT_input_df_2022)
+
+# Run iNEXT: Calculate the Hill Numbers
+# Note that: Species in ROWS, Samples in COLUMNS
+# Remember to set the seed!
+# iNEXT_data_2022 <- iNEXT(iNEXT_input_df_2022,
+                   # q = c(0,1,2), datatype = "abundance")
+
+# Save the file
+#save(iNEXT_data_2022, file = "data/04_Biodiversity/iNEXT_data_2022.RData")
+load("data/04_Biodiversity/iNEXT_data_2022.RData")
+```
+
+# Evaluate the Diversity! 
+```{r load-div}
+load("data/04_Biodiversity/iNEXT_data_2022.RData")
+str(iNEXT_data_2022)
+typeof(iNEXT_data_2022)
+```
+
+# Plot Diversity 
+```{r plot-rarefaction}
+# Prepare Colors 
+color_df_2022 <- 
+  iNEXT_input_df_2022 %>%
+  colnames() %>%
+  data.frame()
+# Check
+head(color_df_2022)
+# Rename the column 
+colnames(color_df_2022)[1] <- "Sample"
+# Check
+head(color_df_2022)
+#View(color_df)
+
+# Make a helper dataframe for plotting with colors 
+iNEXT_color_df_2022 <- 
+  color_df_2022 %>% mutate(Sample = gsub(Sample, pattern = "X",  replace = "")) %>%
+  # Fix the names for merging (I don't think I need to fix my sample names)
+  #mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+        #names = gsub(names, pattern = "X",  replace = "")) %>%
+  # Merge with metadata
+  left_join(metadata_df_2022, by = "Sample") %>%
+  # Merge with colors for plotting with ggiNEXT
+  left_join(data.frame(Rootstock_colors = Rootstock_colors,
+            Rootstock = names(Rootstock_colors)),
+            by = "Rootstock")
+#View(iNEXT_color_df_2022)
+```
+
+# Plot Rarefaction with `ggiNEXT`
+
+```{r ggiNEXT, fig.width=8, fig.height=8}
+# Plot rarefaction! 
+# rarefaction/extrapolation curve, type = 1 
+
+# Order q: 
+  # 0 = Richness/ Number of Total taxa
+  # 1 = Exponential Shannon / Number of "Common" taxa
+  # 2 = Inverse Simpson / Number of "Dominant" taxa 
+
+ggiNEXT(iNEXT_data_2022, type = 1, facet.var = "Order.q") + 
+  facet_wrap(~Order.q, scales = "fixed") + 
+  scale_color_manual(values = iNEXT_color_df_2022$Rootstock_colors, guide = FALSE) + 
+  scale_fill_manual(values = iNEXT_color_df_2022$Rootstock_colors, guide = FALSE) + 
+  scale_shape_manual(values = base::rep(17, nsamples(raw_preprocessed_physeq_2022)),
+                     guide = FALSE) + 
+  theme(legend.position = "none")
+```
+
+Most of the curves above 500 appear to level off, but the samples from the 2023 samping run (which had a very low sequencing depth and are below 500 on the species diversity scale), do not appear to have extrapolation curves.
+
+# Manually plot Diversity 
+
+## Rarefaction
+```{r iNEXT-manual}
+
+iNEXT_manual_df_2022 <- 
+  iNEXT_data_2022$iNextEst$size_based %>%
+  dplyr::rename(Sample = Assemblage) %>%
+  # Fix the samples names 
+  mutate(Sample = gsub(Sample, pattern = "X", replace = "")) %>%
+  # join with metadata 
+  left_join(., metadata_df_2022, by = "Sample") %>%
+  # Add colors to data frame
+  left_join(., data.frame(Rootstock_colors = Rootstock_colors,
+                          Rootstock = names(Rootstock_colors)),
+            by = "Rootstock") 
+# Inspect 
+dim(iNEXT_manual_df_2022)
+str(iNEXT_manual_df_2022)
+#View(iNEXT_manual_df_2022)
+
+# Plot it - Rarefaction Curve 
+iNEXT_manual_df_2022 %>%
+  # Filter out rows that are calcaulted by rarefaction from iNEXT
+  dplyr::filter(Method == "Rarefaction") %>%
+  # Make the actual rarefaction plot with 
+  # the # of sequences on the x-axis and diversity on the y-axis
+  # You can choose to pick one diversity value or plot all three 
+  ggplot(aes(x = m, y= qD, color = Rootstock, group = Sample)) + 
+  # line 
+  geom_line() + 
+  #geom_point() + 
+  # Challenge: Facet with the station
+  facet_grid(Order.q~Rootstock, scales = "free") + 
+  scale_color_manual(values = Rootstock_colors) + 
+  theme(legend.position = "bottom")
+```
+
+It looks like the curves for richness (0) and to some extent Shannon (1) do not level off, so those measures might not be reliable.  The Simpson curves, even for the shallow samples do appear to level off, and so we may want to report that as our principal measure of biodiversity.
+
+# Environmental Variable Check 
+
+
+# Boxplots of Diversity 
+
+Now, let's zoom in on a bit of a better view of the data by visualizing it in a boxplot...  
+
+```{r div-dfs}
+# Prettier station labels 
+#station_names <- c("Copano\nWest", "Copano\nEast","Mesquite\nBay",
+                   #"Aransas\nBay", "Shipping\nChannel")
+
+#names(station_names) <- c("Copano West", "Copano East","Mesquite Bay",
+                          #"Aransas Bay", "Shipping Channel")
+
+# Make a dataframe
+obs_div_df_2022 <- 
+  iNEXT_manual_df_2022 %>%
+  dplyr::filter(Method == "Observed") #%>%
+  #left_join(data.frame(Rootstock_names = Rootstock_names, 
+                       # Rootstock = names(Rootstock_names)), 
+                       # by = "Rootstock")
+
+# Check it 
+head(obs_div_df_2022)
+```
+# command shift c will comment out multiple lines
+
+# Compare the rhizosphere environment of the various rootstocks.
+
+```{r div-boxplot, fig.height = 3.5, fig.width = 9}
+# Boxplots by rootstock 
+obs_div_df_2022 %>%
+  ggplot(aes(x = Rootstock, y = qD, fill = Rootstock, color = Rootstock)) + 
+  facet_wrap(~Order.q, scales = "free") + 
+  geom_jitter(size = 2.5) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = Rootstock_colors) + 
+  scale_fill_manual(values = Rootstock_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank())
+
+# Boxplots by rootstock ARD resistance
+obs_div_df_2022 %>%
+  ggplot(aes(x = ARD, y = qD, fill = ARD, color = ARD)) + 
+  facet_wrap(~Order.q, scales = "free") + 
+  geom_jitter(size = 2.5) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  #scale_color_manual(values = Rootstock_colors) + 
+  #scale_fill_manual(values = Rootstock_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        legend.title = element_blank())
+
+
+#Use a statistical test to verify comparisons
+
+
+```
+
+We can draw that:  
+
+- Next step is to run a statistical test to see if the differences between rootstocks are significant.  
+- Something that's apparent from both graphs is the contrast between soil biodiversity ('soil' or "NA") and rhizosphere (area directly influenced by the roots, all the rootstocks) biodiversity.  The soil samples had lower richness, but more evenness than the rhizosphere samples, which seemingly means there are fewer taxa overall in the soil per area, but also fewer dominant taxa-- the rhizosphere is a place of great diversity with a lot of rare taxa, but there are apparently some taxa that are much more abundant.  Rootstocks B.9 and B.10 seem to be exceptional in that they have high diversity and relatively high evenness.  These two rootstocks were bred in Russia, specifically for cold hardiness, so this is an interesting signal to process.
+
+# Session Information
+```{r session-info}
+devtools::session_info()
+```

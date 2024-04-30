@@ -1,0 +1,1 @@
+This data file contains the raw read fastq files from sequencing, a metadata file that includes information about our treatments, as well as other data files generated at each step in our pipeline.

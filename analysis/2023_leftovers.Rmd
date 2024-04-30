@@ -1,0 +1,176 @@
+---
+title: "2023_leftovers"
+author: "Julie Cardon"
+date: "2024-03-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+
+# Assign Taxonomy 
+
+Here, we will use the silva database version 138!
+```{r assign-tax-2023}
+# Classify the ASVs against a reference set using the RDP Naive Bayesian Classifier described by Wang et al., (2007) in AEM
+taxa_train3 <- 
+  assignTaxonomy(noChimeras_ASV_table3, 
+                 "/workdir/in_class_data/taxonomy/silva_nr99_v138.1_train_set.fa.gz", 
+                 multithread=TRUE)
+
+# Add the genus/species information 
+taxa_addSpecies3 <- 
+  addSpecies(taxa_train3, 
+             "/workdir/in_class_data/taxonomy/silva_species_assignment_v138.1.fa.gz")
+
+# Inspect the taxonomy 
+taxa_print3 <- taxa_addSpecies3 # Removing sequence rownames for display only
+rownames(taxa_print3) <- NULL
+View(taxa_print3)
+```
+
+
+
+
+# Prepare the data for export! 
+
+## 1. ASV Table 
+
+Below, we will prepare the following: 
+
+1. Two ASV Count tables: 
+      a. With ASV seqs: ASV headers include the *entire* ASV sequence ~250bps.
+      b. with ASV names: This includes re-written and shortened headers like ASV_1, ASV_2, etc, which will match the names in our fasta file below.  
+2. `ASV_fastas`: A fasta file that we can use to build a tree for phylogenetic analyses (e.g. phylogenetic alpha diversity metrics or UNIFRAC dissimilarty).  
+
+### Finalize ASV Count Tables 
+```{r prepare-ASVcount-table-2023}
+########### 2. COUNT TABLE ###############
+############## Modify the ASV names and then save a fasta file!  ############## 
+# Give headers more manageable names
+# First pull the ASV sequences
+asv_seqs3 <- colnames(noChimeras_ASV_table3)
+asv_seqs3[1:5]
+
+# make headers for our ASV seq fasta file, which will be our asv names
+asv_headers3 <- vector(dim(noChimeras_ASV_table3)[2], mode = "character")
+asv_headers3[1:5]
+
+# loop through vector and fill it in with ASV names 
+for (i in 1:dim(noChimeras_ASV_table3)[2]) {
+  asv_headers3[i] <- paste(">ASV", i, sep = "_")
+}
+
+# intitution check
+asv_headers3[1:5]
+
+##### Rename ASVs in table then write out our ASV fasta file! 
+#View(noChimeras_ASV_table)
+asv_tab3 <- t(noChimeras_ASV_table3)
+View(asv_tab3)
+
+## Rename our asvs! 
+row.names(asv_tab3) <- sub(">", "", asv_headers)
+View(asv_tab3)
+```
+
+
+## 2. Taxonomy Table 
+```{r prepare-tax-table-2023}
+# Inspect the taxonomy table
+View(taxa_addSpecies3)
+
+##### Prepare tax table 
+# Add the ASV sequences from the rownames to a column 
+new_tax_tab3 <- 
+  taxa_addSpecies3%>%
+  as.data.frame() %>%
+  rownames_to_column(var = "ASVseqs") 
+head(new_tax_tab3)
+
+# intution check 
+stopifnot(new_tax_tab3$ASVseqs3 == colnames(noChimeras_ASV_table3))
+
+# Now let's add the ASV names 
+rownames(new_tax_tab3) <- rownames(asv_tab3)
+head(new_tax_tab3)
+
+### Final prep of tax table. Add new column with ASV names 
+asv_tax3 <- 
+  new_tax_tab3 %>%
+  # add rownames from count table for phyloseq handoff
+  mutate(ASV = rownames(asv_tab3)) %>%
+  # Resort the columns with select
+  dplyr::select(Kingdom, Phylum, Class, Order, Family, Genus, Species, ASV, ASVseqs)
+
+head(asv_tax3)
+
+# Intution check
+stopifnot(asv_tax$ASV == rownames(asv_tax), rownames(asv_tax) == rownames(asv_tab))
+```
+
+
+
+# Write `01_DADA2` files
+
+Now, we will write the files! We will write the following to the `data/01_DADA2/` folder. We will save both as files that could be submitted as supplements AND as .RData objects for easy loading into the next steps into R.:  
+
+1. `ASV_counts.tsv`: ASV count table that has ASV names that are re-written and shortened headers like ASV_1, ASV_2, etc, which will match the names in our fasta file below. This will also be saved as `data/01_DADA2/ASV_counts.RData`.
+2. `ASV_counts_withSeqNames.tsv`: This is generated with the data object in this file known as `noChimeras_ASV_table`. ASV headers include the *entire* ASV sequence ~250bps.  In addition, we will save this as a .RData object as `data/01_DADA2/noChimeras_ASV_table.RData` as we will use this data in `analysis/02_Taxonomic_Assignment.Rmd` to assign the taxonomy from the sequence headers.  
+3. `ASVs.fasta`: A fasta file output of the ASV names from `ASV_counts.tsv` and the sequences from the ASVs in `ASV_counts_withSeqNames.tsv`. A fasta file that we can use to build a tree for phylogenetic analyses (e.g. phylogenetic alpha diversity metrics or UNIFRAC dissimilarty).  
+4. We will also make a copy of `ASVs.fasta` in `data/02_TaxAss_FreshTrain/` to be used for the taxonomy classification in the next step in the workflow.  
+5. Write out the taxonomy table
+6. `track_read_counts.RData`: To track how many reads we lost throughout our workflow that could be used and plotted later. We will add this to the metadata in `analysis/02_Taxonomic_Assignment.Rmd`.   
+
+
+```{r save-files}
+# FIRST, we will save our output as regular files, which will be useful later on. 
+# Save to regular .tsv file 
+# Write BOTH the modified and unmodified ASV tables to a file!
+# Write count table with ASV numbered names (e.g. ASV_1, ASV_2, etc)
+write.table(asv_tab, "data/01_DADA2/ASV_counts.tsv", sep = "\t", quote = FALSE, col.names = NA)
+# Write count table with ASV sequence names
+write.table(noChimeras_ASV_table, "data/01_DADA2/ASV_counts_withSeqNames.tsv", sep = "\t", quote = FALSE, col.names = NA)
+# Write out the fasta file for reference later on for what seq matches what ASV
+asv_fasta <- c(rbind(asv_headers, asv_seqs))
+# Save to a file!
+write(asv_fasta, "data/01_DADA2/ASVs.fasta")
+
+
+# SECOND, let's save the taxonomy tables 
+# Write the table 
+write.table(asv_tax, "data/01_DADA2/ASV_taxonomy.tsv", sep = "\t", quote = FALSE, col.names = NA)
+
+
+# THIRD, let's save to a RData object 
+# Each of these files will be used in the analysis/02_Taxonomic_Assignment
+# RData objects are for easy loading :) 
+save(noChimeras_ASV_table, file = "data/01_DADA2/noChimeras_ASV_table.RData")
+save(asv_tab, file = "data/01_DADA2/ASV_counts.RData")
+# And save the track_counts_df a R object, which we will merge with metadata information in the next step of the analysis in nalysis/02_Taxonomic_Assignment. 
+save(track_counts_df, file = "data/01_DADA2/track_read_counts.RData")
+```
+
+# Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```

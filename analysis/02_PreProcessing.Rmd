@@ -1,0 +1,327 @@
+---
+title: "Phyloseq PreProcessing Apples"
+author: "Julie Cardon"
+date: "2024-03-18"
+output: html_document
+<<<<<<< HEAD
+editor_options: 
+  chunk_output_type: console
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = "center",
+<<<<<<< HEAD
+                      fig.path = "./figures/02_PreProcessing/") # send any figure output to this folder 
+=======
+                      fig.path = "../figures/02_PreProcessing/") # send any figure output to this folder 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+```
+
+# Load libraries 
+```{r load-libraries}
+#devtools::install_github("joey711/phyloseq")
+pacman::p_load(devtools, phyloseq, tidyverse, dada2, install = FALSE)
+```
+
+# Goals
+
+Here, we will process the data into a phyloseq object. 
+
+- ASV table 
+- Taxonomy Table 
+- Track Reads (metadata)
+
+Then, we will remove the following: 
+
+1. Remove Chloroplasts
+2. Remove Mitochondria. 
+3. Removing ASVs from negative controls and also negative control samples.  
+4. Evaluate accuracy by looking at the Mock Community.  
+5. Remove samples without "enough" reads. 
+
+Finally, write data file of phyloseq output, which will be stored in `data/02_PreProcessing/raw_preprocessed_phyloseq.RData`.  
+
+
+# Load Data 
+
+## ASV Table
+```{r load-asv-table}
+# First, load asv table
+load("data/01_DADA2/ASV_counts.RData")
+
+# Inspect asv_tab
+head(asv_tab)[,1:5]
+
+# Fix names 
+sample_names <- colnames(asv_tab)
+samples_fixed <- apply(sapply(strsplit(basename(sample_names), "_"), `[`,1:2), 2, paste, collapse  = "_" )
+head(samples_fixed)
+
+# re-write the ASV count file to fix names 
+colnames(asv_tab) <- samples_fixed
+str(asv_tab)
+<<<<<<< HEAD
+
+#save asv_tab
+save(asv_tab, file = "data/02_PreProcessing/asv_tab.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+```
+
+##  Taxonomy Table
+```{r load-tax-table}
+tax_df <- read.table("data/01_DADA2/ASV_taxonomy.tsv", sep = "\t", skip = 1)
+head(tax_df)
+
+# fix column names 
+colnames(tax_df) <- c("asv_names", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "ASV", "ASVseq")
+
+head(tax_df)
+
+# Taxonomy Table Matrix
+tax_mat <- 
+  tax_df %>%
+  tibble::column_to_rownames(., var = "asv_names") %>%
+  as.matrix()
+<<<<<<< HEAD
+
+#Save tax_mat
+save(tax_mat, file = "data/02_PreProcessing/tax_mat.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+```
+
+
+##  Track Reads Data
+```{r load-track-reads}
+load("data/01_DADA2/track_read_counts.RData")
+
+# Take a look at the data
+head(track_read_counts)
+dim(track_read_counts)
+
+# Please in the terminal copy metadata.csv 
+<<<<<<< HEAD
+=======
+# into: SalinityGradient_16S/data 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+# from: /workdir/jmc753/git_repos/AppleRhizRepository/data/metadata.csv
+
+# Load in metadata
+metadata_df <- read.csv("data/JulieCardonMetadata.csv")
+dim(metadata_df)
+colnames(metadata_df)
+
+
+# Merge metadata_df with track_reads_df 
+head(metadata_df)
+head(track_read_counts)
+
+metadata_track_reads_df <- 
+  metadata_df %>%
+  left_join(., track_read_counts, by = c("Sample" = "names"))
+
+# Intuition check 
+head(metadata_track_reads_df)
+
+# Update row.names to be sample names 
+## Before 
+row.names(metadata_track_reads_df)
+# Rewrite 
+row.names(metadata_track_reads_df) <- metadata_track_reads_df$Sample
+# Check afterwards that it worked 
+row.names(metadata_track_reads_df)
+# intuition check
+head(metadata_track_reads_df)
+<<<<<<< HEAD
+# Save metadata_track_reads_df
+save(metadata_track_reads_df, file = "data/02_PreProcessing/metadata_track_reads_df.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+```
+
+
+# Handoff to phyloseq
+```{r phyloseq-handoff}
+# double check it's all good 
+dim(asv_tab)
+dim(tax_mat)
+
+# Intuition check 
+stopifnot(row.names(asv_tab) == row.names(tax_mat))
+
+# Construct the phyloseq object 
+raw_physeq <- phyloseq(otu_table(asv_tab, taxa_are_rows = TRUE),
+                       sample_data(metadata_track_reads_df),
+                       tax_table(tax_mat))
+raw_physeq
+
+# Save this raw phyloseq object 
+save(raw_physeq, file = "data/02_PreProcessing/raw_physeq.RData")
+```
+
+# Clean up the data
+
+Remove: 
+
+1. Chloroplasts
+2. mitochondria  
+
+```{r rm-mitos-chloros}
+# Remind myself of tax table 
+#View(tax_mat)
+
+# Make new physeq without chloroplasts
+noChloros_physeq <- 
+  raw_physeq %>% 
+  # rm chloroplasts
+  subset_taxa(Order != "Chloroplast" | is.na(Order))
+  
+# How many taxa were chloroplasts? 
+num_chloro_ASVs <- ntaxa(raw_physeq) - ntaxa(noChloros_physeq)
+num_chloro_ASVs
+
+# Intuition chek 
+#noChloros_physeq %>%
+ # tax_table() %>%
+  #data.frame() %>%
+  #View()
+
+# remove mitochondria 
+noChlorosMitos_physeq <- 
+  noChloros_physeq %>%
+  subset_taxa(Family != "Mitochondria" | is.na(Family))
+
+# How many mitochondrial ASVs? 
+num_mito_ASVs <- ntaxa(noChloros_physeq) - ntaxa(noChlorosMitos_physeq)
+num_mito_ASVs
+
+noChlorosMitos_physeq
+
+# How many total asvs were removed from chloros and mitos 
+ntaxa(raw_physeq) - ntaxa(noChlorosMitos_physeq)
+# proportion of asvs kept? 
+ntaxa(noChlorosMitos_physeq)/ntaxa(raw_physeq)
+```
+## Kept 99% of the taxa
+
+# Evaluate the Sequencing Depth 
+
+```{r seq-depth}
+# The current data objec
+noChlorosMitos_physeq
+
+# What is the library size/sequencing depth for each sample? 
+seqSums_df <- 
+  noChlorosMitos_physeq %>%
+  otu_table() %>%
+  # Sum each sample column 
+  colSums() %>%
+  data.frame() %>%
+  rownames_to_column(var = "Sample") %>%
+  left_join(., metadata_track_reads_df, by = "Sample") 
+
+# Rename second column 
+colnames(seqSums_df)[2] <- "TotalSeqs"
+
+# check
+dim(seqSums_df)
+head(seqSums_df)
+
+# Show the depth of samples 
+seqSums_df %>%
+  dplyr::select(Sample, TotalSeqs) %>%
+  arrange(TotalSeqs) %>%
+  head()
+
+# plot it! 
+seqSums_df %>%
+  ggplot(aes(x=reorder(Sample, TotalSeqs), y = TotalSeqs,
+             fill = Rootstock)) + 
+  geom_bar(stat = "identity") 
+
+# Density plot 
+seqSums_df %>%
+  ggplot(aes(TotalSeqs, fill = Rootstock)) +
+  geom_density(alpha = 0.5)
+```
+
+# Remove samples with few reads 
+
+```{r rm-samps}
+# What's the min seq depth? 
+min(sample_sums(noChlorosMitos_physeq))
+
+<<<<<<< HEAD
+#  Make a new object
+raw_preprocessed_physeq <- 
+ noChlorosMitos_physeq #%>%
+  #subset_samples(., Sample != "G11_2022")
+
+# Seperating the two years and Remove G11_2022
+raw_preprocessed_physeq_2022 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2022) %>%
+  subset_samples(., Sample != "G11_2022")
+raw_preprocessed_physeq_2023 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2023)
+#View(raw_preprocessed_physeq_2022)
+#What's the new min seq depth?
+min(sample_sums(raw_preprocessed_physeq))
+min(sample_sums(raw_preprocessed_physeq_2022))
+min(sample_sums(raw_preprocessed_physeq_2023))
+=======
+# Remove 20210615-MA-SCB2F
+raw_preprocessed_physeq <- 
+  noChlorosMitos_physeq %>%
+  subset_samples(., names != "20210615-MA-SCB2F")
+
+#What's the new min seq depth?
+min(sample_sums(raw_preprocessed_physeq))
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+```
+
+# Save Preprocessed Phyloseq Object
+```{r save-physeq}
+save(raw_preprocessed_physeq,
+     file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
+<<<<<<< HEAD
+save(raw_preprocessed_physeq_2022,
+     file = "data/02_PreProcessing/raw_preprocessed_physeq_2022.RData")
+save(raw_preprocessed_physeq_2023,
+     file = "data/02_PreProcessing/raw_preprocessed_physeq_2023.RData")
+```
+
+```{r rarefy-phylos-object}
+load(raw_preprocessed_physeq,
+     file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
+
+rare_phylos <- rarefy_even_depth(raw_preprocessed_physeq, sample.size = min(sample_sums(raw_preprocessed_physeq)), rngseed = TRUE, replace = FALSE, trimOTUs = TRUE, verbose = TRUE)
+
+
+
+#in inext endpoint 1000
+```
+
+
+=======
+```
+
+# Session Information 
+```{r session-info}
+# Ensure reproducibility 
+devtools::session_info()
+```
+```{r}
+```
+
+
+
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+# Session Information 
+```{r session-info}
+# Ensure reproducibility 
+devtools::session_info()
+```
+
+

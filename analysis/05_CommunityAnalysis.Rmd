@@ -1,0 +1,625 @@
+
+---
+title: "Between Sample (Beta) Diversity of Microbes according to Rootstock Genotype"
+author: "Julie Cardon"
+date: "2024-04-26"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.path = "../figures/05_CommunityAnalysis/")
+```
+
+# Goals 
+
+1. Load in phyloseq data with rooted tree.  
+2. Evaluate sequencing depth and remove samples.  
+3. Normalize the read counts between samples.  
+4. Calculate community dissimilarities. Numbers between 0 and 1. If 0, completely similar versus if they are 1, then they're completely dissimilar.   
+    a. **Sorensen**: Shared Species as a binary value: Abundance-unweighted 
+    b. **Bray-Curtis**: Shared Abundant species: Abundance-weighted
+    c. **(Abundance-)Weighted UNIFRAC**: Consider Abundant Species and where they fall on the tree  
+5. Visualize the community data with two unconstrained Ordinations:  
+    a. **PCoA**: Linear Method. Eigenvalue = how much variation is explained by each axis. Choose to view axis 1, 2, 3, etc. and plot them together.  
+    b. **NMDS**: Non-linear. Smush multiple Dimensions into 2 or 3 axes. Need to report Stress value (ideally <0.15).  
+6. Run statistics with PERMANOVA and betadispR. 
+
+
+# Setup 
+
+## Set the seed 
+```{r set-seed}
+# Any number can be chosen 
+set.seed(238428)
+```
+
+## Load Libraries
+```{r load-libraries}
+#install.packages("vegan")
+pacman::p_load(tidyverse, devtools, phyloseq, patchwork, vegan,
+               install = FALSE)
+# To add some statistical comparison, we need to load a couple of packages:
+#install.packages("ggpubr")
+#library(ggpubr)
+#install.packages("rstatix")
+#library(rstatix)
+
+# Load colors for Rootstocks 
+Rootstock_colors <- c(
+  "Bud9" = "indianred",
+  "Bud10" = "burlywood3",
+  "G11" = "#D9CC3C",
+  "G41" = "#A0E0BA",
+  "G202" = "#00ADA7",
+  "G213" = "dodgerblue4",
+  "G890" = "khaki4",
+  "G935" = "honeydew3",
+  "G969" = "brown",
+  "M7" = "palegreen4",
+  "M9337" = "gold",
+  "M9Nic29" = "dodgerblue3",
+  "M9pajam2" = "peru",
+  "V1" = "plum4",
+  "G210" = "paleturquoise3",
+  "Soil" = "palevioletred")
+```
+
+## Load Data 
+```{r load-physeq}
+# Load in rooted phylogenetic tree! 
+load("data/03_Phylogenetic_Tree/phytree_preprocessed_physeq.RData")
+midroot_physeq_rm_susASVs
+unrooted_physeq_rm_sus_ASVs
+```
+
+
+# Explore Read Counts 
+
+## Raw read depth 
+```{r calc-seq-depth}
+# Calculate the total number of reads per sample. 
+raw_TotalSeqs_df  <- 
+  midroot_physeq_rm_susASVs %>%
+  # calculate the sample read sums 
+  sample_sums() %>%
+  data.frame()
+# name the column 
+colnames(raw_TotalSeqs_df)[1] <- "TotalSeqs"
+  
+#View(raw_TotalSeqs_df)
+
+# make histogram of raw reads 
+raw_TotalSeqs_df %>%
+  ggplot(aes(x = TotalSeqs)) + 
+  geom_histogram(bins = 50) + 
+  scale_x_continuous(limits = c(0, 70000)) + 
+  labs(title = "Raw Sequencing Depth Distribution") + 
+  theme_classic()
+```
+
+## Remove lowly seq sample 
+```{r low-seq-sample}
+raw_rooted_physeq <- 
+  midroot_physeq_rm_susASVs %>%
+  # remove lowly seq sample that was outlier in alpha diversity analysis
+  subset_samples(Sample != "G11_2022") %>%
+  # any asvs unique to this sample will also be removed 
+  prune_taxa(taxa_sums(.) > 0, .)
+
+# Inspect 
+raw_rooted_physeq
+
+# what is the minimum number of sequences 
+raw_rooted_physeq %>%
+  sample_sums() %>%
+  min()
+```
+
+## Normalize read counts  
+```{r scale-reads}
+### scale_reads function
+#################################################################################### 
+# Function to scale reads: http://deneflab.github.io/MicrobeMiseq/ 
+# Scales reads by 
+# 1) taking proportions
+# 2) multiplying by a given library size of n
+# 3) rounding 
+# Default for n is the minimum sample size in your library
+# Default for round is floor
+
+matround <- function(x){trunc(x+0.5)}
+
+scale_reads <- function(physeq, n = min(sample_sums(physeq)), round = "round") {
+  
+  # transform counts to n
+  physeq.scale <- transform_sample_counts(physeq, function(x) {(n * x/sum(x))})
+  
+  # Pick the rounding functions
+  if (round == "floor"){
+    otu_table(physeq.scale) <- floor(otu_table(physeq.scale))
+  } else if (round == "round"){
+    otu_table(physeq.scale) <- round(otu_table(physeq.scale))
+  } else if (round == "matround"){
+    otu_table(physeq.scale) <- matround(otu_table(physeq.scale))
+  }
+  
+  # Prune taxa and return new phyloseq object
+  physeq.scale <- prune_taxa(taxa_sums(physeq.scale) > 0, physeq.scale)
+  return(physeq.scale)
+}
+```
+
+## Scale the reads and check the distribution of the seq depth 
+
+This is where one might decide use rarefaction to normalize data. 
+```{r scale-physeq}
+min(sample_sums(raw_rooted_physeq))
+
+# Scale reads by the above function
+scaled_rooted_physeq <- 
+  raw_rooted_physeq %>%
+  scale_reads(round = "matround")
+
+# Calculate the read depth 
+scaled_TotalSeqs_df <- 
+  scaled_rooted_physeq %>%
+  sample_sums() %>%
+  data.frame()
+colnames(scaled_TotalSeqs_df)[1] <-"TotalSeqs"
+
+# Inspect
+head(scaled_TotalSeqs_df)
+
+# Check the range of the data 
+min_seqs <- min(scaled_TotalSeqs_df$TotalSeqs); min_seqs
+max_seqs <- max(scaled_TotalSeqs_df$TotalSeqs); max_seqs
+# range
+max_seqs - min_seqs
+
+# Plot Histogram 
+scaled_TotalSeqs_df %>%
+  ggplot(aes(x = TotalSeqs)) + 
+  geom_histogram(bins = 50) + 
+  scale_x_continuous(limits = c(0, 10000)) + 
+  labs(title = "Scaled Sequencing Depth at 2194") + 
+  theme_classic()
+```
+
+
+# Cacluate & Visualize community dissimilarity 
+
+Exploratory analyses from Paliy & Shankar (2016) paper, which is using unconstrained ordination methods like PCoA. 
+
+## PCoA 
+
+### Sorensen
+```{r sorensen-PCoA}
+# Calculate sorensen dissimilarity: Abundance-unweighted of shared taxa
+scaled_soren_pcoa <-  
+  ordinate(
+    physeq = scaled_rooted_physeq,
+    method = "PCoA",
+    distance = "bray", binary = TRUE)
+
+#str(scaled_soren_pcoa)
+# Plot the ordination 
+soren_rootstock_pcoa <- plot_ordination(
+  physeq = scaled_rooted_physeq,
+  ordination = scaled_soren_pcoa,
+  color = "Rootstock",
+  #shape = "Rootstock",
+  title = "Sorensen PCoA") +
+  geom_point(size=1, alpha = 0.5, aes(color = ARD)) +
+  #scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  scale_color_manual(values = Rootstock_colors) + 
+  theme_bw()
+# Show the plot 
+soren_rootstock_pcoa
+# Make a Pcoa based on ARD status
+soren_ARD_pcoa <- plot_ordination(
+  physeq = scaled_rooted_physeq,
+  ordination = scaled_soren_pcoa,
+  color = "ARD",
+  #shape = "Rootstock",
+  title = "Sorensen PCoA") +
+  geom_point(size=1, alpha = 0.5, aes(color = ARD)) +
+  #scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  #scale_color_manual(values = Rootstock_colors) + 
+  theme_bw()
+# Show the plot 
+soren_ARD_pcoa
+```
+
+*Note that I have removed the PERMANOVA test to below the ordinations. We will come back to it later!*
+
+Here, we are evaluating the shared taxa by presence/absence (abundance-unweighted) in the Sorensen metric. 
+
+Note that there is a weird arch or horseshoe-effect in the data. This is likely because we have complete species turnover between our stations. If you have this in your data, please take a look at the paper by [Morton et al., 2017](https://journals.asm.org/doi/10.1128/msystems.00166-16). More on this in NMDS...
+
+Note that:  
+
+- Axis 1 = ~9.8% of variation  
+- Axis 2 = ~4.7% of variation 
+
+This means we explain 14.5% of the variation in the data in these two axes. 
+
+
+
+### Bray
+```{r bray-PCoA}
+# Calculate the BC distance
+scaled_BC_pcoa <- 
+  ordinate(
+    physeq = scaled_rooted_physeq,
+    method = "PCoA",
+    distance = "bray")
+
+# Plot the PCoA
+bray_rootstock_pcoa <- 
+  plot_ordination(
+    physeq = scaled_rooted_physeq,
+    ordination = scaled_BC_pcoa,
+    color = "Rootstock",
+    #shape = "Rootstock",
+    title = "Bray-Curtis PCoA") +
+  geom_point(size=2, alpha = 0.5, aes(color = Rootstock)) +
+  #scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  scale_color_manual(values = c(Rootstock_colors)) + 
+  theme_bw()
+bray_rootstock_pcoa
+
+# For ARD resistance
+# Plot the PCoA
+bray_ARD_pcoa <- 
+  plot_ordination(
+    physeq = scaled_rooted_physeq,
+    ordination = scaled_BC_pcoa,
+    color = "ARD",
+    shape = "ARD",
+    title = "Bray-Curtis PCoA") +
+  geom_point(size=2, alpha = 0.5, aes(color = ARD)) +
+  scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  scale_color_manual(values = c("red", "orange", "yellow", "green", "blue")) + 
+  theme_bw()
+bray_ARD_pcoa
+```
+
+Here, we are evaluating the shared taxa and then weighting them by their abundances, which provides more influence for species that are more abundant. 
+
+Note that there is a weird arch or horseshoe-effect in the data. This is likely because we have complete species turnover between our stations. If you have this in your data, please take a look at the paper by [Morton et al., 2017](https://journals.asm.org/doi/10.1128/msystems.00166-16). More on this in NMDS...
+
+Note that:  
+
+- Axis 1 = ~13.6% of variation  
+- Axis 2 = ~5.7% of variation 
+
+This means we explain 19.3% of the variation in the data in these two axes, which is more than the previous plot with the Sorensen Dissimilarity. Abundance does seem to have an influence!!
+
+Samples do not separate very well by rootstock. The results are similar if I plot using ARD resistance as the variable.  There is a cluster of points on the right-hand side in all of the plots; I think this maybe be the 2023 data cluster together differently from the 2022 data.  
+
+
+
+### Weighted Unifrac
+```{r wUnifrac-PCoA}
+# Calculate the BC distance
+scaled_wUNI_pcoa <- 
+  ordinate(
+    physeq = scaled_rooted_physeq,
+    method = "PCoA",
+    distance = "wunifrac")
+
+# Plot the PCoA
+wUNI_rootstock_pcoa <- 
+  plot_ordination(
+    physeq = scaled_rooted_physeq,
+    ordination = scaled_wUNI_pcoa,
+    color = "Rootstock",
+    #shape = "Rootstock",
+    title = "Weighted Unifrac PCoA by Rootstock") +
+  geom_point(size=2, alpha = 0.5, aes(color = Rootstock)) +
+  #scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  scale_color_manual(values = c(Rootstock_colors)) + 
+  theme_bw()
+wUNI_rootstock_pcoa
+```
+
+Here, we are evaluating the shared taxa and then weighting them by their abundances, which provides more influence for species that are more abundant. 
+
+Note that there is a slight arch or horseshoe-effect in the data. This is likely because we have complete species turnover between our stations. If you have this in your data, please take a look at the paper by [Morton et al., 2017](https://journals.asm.org/doi/10.1128/msystems.00166-16). More on this in NMDS...
+
+Note that:   
+
+- Axis 1 = ~35.5% of variation  
+- Axis 2 = ~7.3% of variation 
+
+This means we explain *42.8*% of the variation in the data in these two axes (!!!), which is significantly more than the previous plots with the taxonomic dissimilarity measures. Here, phylogeny seems to be very important! This means that taxa that are abundant are found in different places in the phylogenetic tree. Therefore, the evoultionary distances (aka the branch lengths) and their abundances seem to have a major influence!!
+
+It doesn't really look like the samples are separating more within each group than they did  with Sorensen.  
+
+
+## Combine PCoAs
+
+Let's plot all three together into one plot to have a concise visualization of the three metrics. 
+```{r pcoa-together, fig.width=8, fig.height=3.5}
+(soren_rootstock_pcoa + theme(legend.position = "none")) + 
+  (bray_rootstock_pcoa + theme(legend.position = "none")) + 
+    (wUNI_rootstock_pcoa + theme(legend.position = "none"))
+```
+
+
+## NMDS 
+
+### Weighted Unifrac
+
+Since we did 3 of the dissimilarity metrics for the PCoA, let's just plot one example of them for the NMDS plotting. Here, we will use weighted Unifrac 
+```{r wUnifrac-NMDS}
+# Calculate the Weighted Unifrac distance
+scaled_wUNI_nmds <- 
+  ordinate(
+    physeq = scaled_rooted_physeq,
+    method = "NMDS",
+    distance = "wunifrac")
+
+# Plot the PCoA
+wUNI_rootstock_nmds <- 
+  plot_ordination(
+    physeq = scaled_rooted_physeq,
+    ordination = scaled_wUNI_nmds,
+    color = "Rootstock",
+    #shape = "ARD",
+    title = "Weighted Unifrac NMDS") +
+  geom_point(size=3, alpha = 0.5, aes(color = Rootstock)) +
+  #scale_shape_manual(values = c(15,16,17,18, 19, 20)) +
+  scale_color_manual(values = c(Rootstock_colors)) + 
+  theme_bw()
+wUNI_rootstock_nmds
+```
+
+I don't see a stress value for this plot. And, It seems important to emphasize that the PCoA and the NMDS plot both look pretty similar! 
+
+In this case, I would always prefer to report the PCoA results because they are linear and provide a lot more post-hoc analyses to follow up with. In addition, it's helpful to only have 2 axes of variation and show how much variation is explained. 
+
+```{r combined-wUnifrac, fig.width=6, fig.height=3.5}
+(wUNI_rootstock_pcoa + theme(legend.position = "none")) + 
+  (wUNI_rootstock_nmds + theme(legend.position = "none"))
+```
+
+
+# Statistical Significance Testing 
+
+## PERMANOVA 
+```{r PERMANOVA}
+# Calculate all three of the distance matrices
+scaled_sorensen_dist <- phyloseq::distance(scaled_rooted_physeq, method = "bray", binary = TRUE)
+scaled_bray_dist <- phyloseq::distance(scaled_rooted_physeq, method = "bray")
+scaled_wUnifrac_dist <- phyloseq::distance(scaled_rooted_physeq, method = "wunifrac")
+
+# make a data frame from the sample_data
+# All distance matrices will be the same metadata because they 
+# originate from the same phyloseq object. 
+metadata <- data.frame(sample_data(scaled_rooted_physeq))
+
+# Adonis test
+# In this example we are testing the hypothesis that the fifteen rootstocks
+# that were collected have different centroids in the ordination space 
+# for each of the dissimilarity metrics, we are using a discrete variable 
+adonis2(scaled_sorensen_dist ~ Rootstock, data = metadata)
+adonis2(scaled_bray_dist ~ Rootstock, data = metadata)
+adonis2(scaled_wUnifrac_dist ~ Rootstock, data = metadata)
+```
+
+Note that:  
+
+- R2 = the percent variation explained = 11%
+- F = the F-Statistic, which represents the importance value.=1.2 
+- Pr(>F) = the pvalue =0.001
+
+
+These numbers were the same for essentially all 3 measures, slightly higher for Unifrac, which explains ~12% of the variation in the data and also has the highest F-statistic (and highest p-value, 0.014).
+
+
+## I won't do a multivariable permanova for now.
+```{r PERMANOVA-multiVariable}
+# We might also care about other variables
+# Here, we will add date and fraction as variables
+# multiplicative model ORDER MATTERS! 
+#adonis2(scaled_sorensen_dist ~ Rootstock * ARD * SequencingRun, data = metadata)
+#adonis2(scaled_bray_dist ~ Rootstock * ARD * SequencingRun, data = metadata)
+# Note that the ORDER MATTERS!
+#adonis2(scaled_wUnifrac_dist ~ Rootstock * ARD * SequencingRun, data = metadata)
+#adonis2(scaled_wUnifrac_dist ~ SequencingRun * ARD * Rootstock, data = metadata)
+#NAs are showing as missing data (if want to find out where the missing data is from the error, do code below)
+#missing_values <- sum(is.na(metadata$SequencingRun))
+#print(missing_values)
+#View(metadata)
+```
+
+We can also run tests that include additive (+) or multipliciatve models, which include the interaction term between variables. 
+
+## BetaDispR
+
+The PERMANOVA is sensitive to variance/dispersion in the data. Therefore, we need to run a homogeneity of dispersion test to test for the sensitivity of our PERMANOVA results to variance. 
+```{r betadispR}
+# Homogeneity of Dispersion test with beta dispr
+# Sorensen 
+beta_soren_rootstock <- betadisper(scaled_sorensen_dist, metadata$Rootstock)
+permutest(beta_soren_rootstock)
+
+# Bray-curtis 
+beta_bray_rootstock <- betadisper(scaled_bray_dist, metadata$Rootstock)
+permutest(beta_bray_rootstock)
+
+# Weighted Unifrac 
+beta_bray_rootstock <- betadisper(scaled_wUnifrac_dist, metadata$Rootstock)
+permutest(beta_bray_rootstock)
+```
+
+Above, the Sorensen and Bray data had no significant difference in dispersion between groups (.455, .729), but the Unifrac test indicates that dispersion of the groups differs significantly (.009). Therefore, we need to be very careful about what we conclude about our data. 
+
+
+
+# Taxonomic Composition
+
+## Phylum
+```{r phylum-colors}
+# Set the phylum colors
+phylum_colors <- c(
+  Acidobacteriota = "navy", 
+  Actinobacteriota = "darkslategray2", 
+  Armatimonadota = "deeppink1",
+  Alphaproteobacteria = "plum2", 
+  Bacteroidota = "gold", 
+  Betaproteobacteria = "plum1", 
+  Bdellovibrionota = "red1",
+  Chloroflexi="black", 
+  Crenarchaeota = "firebrick",
+  Cyanobacteria = "limegreen",
+  Deltaproteobacteria = "grey", 
+  Desulfobacterota="magenta",
+  Firmicutes = "#3E9B96",
+  Gammaproteobacteria = "greenyellow",
+  "Marinimicrobia (SAR406 clade)" = "yellow",
+  Myxococcota = "#B5D6AA",
+  Nitrospirota = "palevioletred1",
+  Proteobacteria = "royalblue",
+  Planctomycetota = "darkorange", 
+  "SAR324 clade(Marine group B)" = "olivedrab",
+  #Proteobacteria_unclassified = "greenyellow",
+  Thermoplasmatota = "green",
+  Verrucomicrobiota = "darkorchid1")
+ # Other = "grey")
+```
+
+
+```{r phylum-composition}
+# Calculate the phylum relative abundance 
+# Note: The read depth MUST be normalized in some way: scale_reads
+phylum_df <- 
+  scaled_rooted_physeq %>%
+  # agglomerate at the phylum level 
+  tax_glom(taxrank = "Phylum") %>% 
+  # Transform counts to relative abundance 
+  transform_sample_counts(function (x) {x/sum(x)}) %>%
+  # Melt to a long format 
+  psmelt() %>%
+  # Filter out Phyla that are <1% - get rid of low abundant Phyla
+  dplyr::filter(Abundance > 0.01) #%>%
+  # fix the order of date (or other factors, but in this case I will leave them in alphabetical order, but comment out the code in case I decide to adapt it later.)
+  #mutate(date = fct_relevel(date, c("6/2/21", "6/15/21", "10/5/21")),
+         #rootstock= fct_relevel(rootstock, c("Copano West", "Copano East",
+                                         # "Mesquite Bay", "Aransas Bay",
+                                         # "Shipping Channel")))
+
+# Stacked Bar Plot With All phyla 
+# Plot Phylum Abundances - make sure to load phylum_colors 
+phylum_df %>%
+  # Warning: It's important to have one sample per x value, 
+  # otherwise, it will take the sum between multiple samples
+  #dplyr::filter(depth == 0.0) %>%
+  #dplyr::filter(fraction == "Whole") %>%
+  ggplot(aes(x = Rootstock, y = Abundance, fill = Phylum)) + 
+  #facet_grid(.~date) + 
+  geom_bar(stat = "identity", color = "transparent") + 
+  labs(title = "Phylum Composition") + 
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+```
+
+
+```{r phylum-plot, fig.width=8, fig.height=9}
+## Make each phylum it's own row 
+phylum_df %>%
+  # Warning: It's important to have one sample per x value, 
+  # otherwise, it will take the sum between multiple samples
+  #dplyr::filter(depth == 0.0) %>% 
+  #dplyr::filter(fraction == "Whole") %>%
+  ggplot(aes(x = Rootstock, y = Abundance, fill = Phylum)) + 
+  #facet_grid(Phylum~date, scale = "free") + 
+  geom_bar(stat = "identity", color = "transparent") + 
+  labs(title = "Phylum Composition") + 
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        strip.text.y = element_text(size = 5))
+```
+
+
+```{r phylum-station-actinobacteria, fig.width=5, fig.height=3.5}
+# Narrow in on a specific group
+# Actinobacteriota - y: abundance, x: station, dot plot + boxplot
+phylum_df %>%
+  dplyr::filter(Phylum == "Actinobacteriota") %>%
+  # build the plot 
+  ggplot(aes(x = Rootstock, y = Abundance, 
+             fill = Rootstock, color = Rootstock)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Actinobacteriota Phylum Abundance") + 
+  scale_color_manual(values = Rootstock_colors) + 
+  scale_fill_manual(values = Rootstock_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right") #+
+  #stat_compare_means(method = "kruskal.test", label.y =0.5) +
+  #geom_pwc(method = "wilcox_test")
+# Statistically: Kruskall-Wallis followed by a Wilcoxon-Mann-Whitney test
+# These are non-parametric (non-normal) stat tests 
+```
+
+
+## Family
+```{r family-composition, fig.width=10, fig.height=10}
+# Calculate the Family relative abundance 
+# Note: The read depth MUST be normalized in some way: scale_reads
+family_df <- 
+  scaled_rooted_physeq %>%
+  # agglomerate at the phylum level 
+  tax_glom(taxrank = "Family") %>% 
+  # Transform counts to relative abundance 
+  transform_sample_counts(function (x) {x/sum(x)}) %>%
+  # Melt to a long format 
+  psmelt() %>%
+  # Filter out Phyla that are <1% - get rid of low abundant Phyla
+  dplyr::filter(Abundance > 0.01) 
+# Check family_df
+str(family_df)
+
+# Plot family 
+# Actinobacteriota Families 
+family_df %>%
+  dplyr::filter(Phylum == "Actinobacteriota") %>%
+  # build the plot 
+  ggplot(aes(x = Rootstock, y = Abundance, 
+             fill = Rootstock, color = Rootstock)) + 
+  facet_wrap(.~Family, scales = "free_y", nrow = 4) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Actinobacteriota Family Abundance") + 
+  scale_color_manual(values = Rootstock_colors) + 
+  scale_fill_manual(values = Rootstock_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "bottom")
+```
+The family plot looks strange, I need to do more problem solving before moving on with the other taxonomic levels.
+
+# Session Information 
+For reproducibility 
+```{r session_info}
+devtools::session_info()
+```
