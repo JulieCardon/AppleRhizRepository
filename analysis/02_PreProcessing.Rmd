@@ -4,8 +4,11 @@ author: "Julie Cardon"
 date: "2024-03-18"
 output: html_document
 <<<<<<< HEAD
+<<<<<<< HEAD
 editor_options: 
   chunk_output_type: console
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ---
@@ -14,7 +17,11 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
 <<<<<<< HEAD
+<<<<<<< HEAD
                       fig.path = "./figures/02_PreProcessing/") # send any figure output to this folder 
+=======
+                      fig.path = "../figures/02_PreProcessing/") # send any figure output to this folder 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
                       fig.path = "../figures/02_PreProcessing/") # send any figure output to this folder 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -64,9 +71,12 @@ head(samples_fixed)
 colnames(asv_tab) <- samples_fixed
 str(asv_tab)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 #save asv_tab
 save(asv_tab, file = "data/02_PreProcessing/asv_tab.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```
@@ -87,9 +97,12 @@ tax_mat <-
   tibble::column_to_rownames(., var = "asv_names") %>%
   as.matrix()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 #Save tax_mat
 save(tax_mat, file = "data/02_PreProcessing/tax_mat.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```
@@ -105,6 +118,10 @@ dim(track_read_counts)
 
 # Please in the terminal copy metadata.csv 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+# into: SalinityGradient_16S/data 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 # into: SalinityGradient_16S/data 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -137,8 +154,11 @@ row.names(metadata_track_reads_df)
 # intuition check
 head(metadata_track_reads_df)
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Save metadata_track_reads_df
 save(metadata_track_reads_df, file = "data/02_PreProcessing/metadata_track_reads_df.RData")
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```
@@ -256,6 +276,7 @@ seqSums_df %>%
 min(sample_sums(noChlorosMitos_physeq))
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #  Make a new object
 raw_preprocessed_physeq <- 
  noChlorosMitos_physeq #%>%
@@ -271,6 +292,8 @@ min(sample_sums(raw_preprocessed_physeq))
 min(sample_sums(raw_preprocessed_physeq_2022))
 min(sample_sums(raw_preprocessed_physeq_2023))
 =======
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 # Remove 20210615-MA-SCB2F
 raw_preprocessed_physeq <- 
   noChlorosMitos_physeq %>%
@@ -278,6 +301,9 @@ raw_preprocessed_physeq <-
 
 #What's the new min seq depth?
 min(sample_sums(raw_preprocessed_physeq))
+<<<<<<< HEAD
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```
 
@@ -285,6 +311,7 @@ min(sample_sums(raw_preprocessed_physeq))
 ```{r save-physeq}
 save(raw_preprocessed_physeq,
      file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
+<<<<<<< HEAD
 <<<<<<< HEAD
 save(raw_preprocessed_physeq_2022,
      file = "data/02_PreProcessing/raw_preprocessed_physeq_2022.RData")
@@ -305,6 +332,8 @@ rare_phylos <- rarefy_even_depth(raw_preprocessed_physeq, sample.size = min(samp
 
 
 =======
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```
 
 # Session Information 
@@ -317,6 +346,9 @@ devtools::session_info()
 
 
 
+<<<<<<< HEAD
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 # Session Information 
 ```{r session-info}

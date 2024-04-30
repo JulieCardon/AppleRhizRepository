@@ -11,7 +11,15 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
                       fig.path = "./figures/01_DADA_2/") # send any figure output to this folder 
+=======
+                      fig.path = "../figures/01_DADA_2/") # send any figure output to this folder 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+                      fig.path = "./figures/01_DADA_2/") # send any figure output to this folder 
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
                       fig.path = "../figures/01_DADA_2/") # send any figure output to this folder 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -133,13 +141,22 @@ length(filtered_reverse_reads2)
 ```
 
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 ```{r}
 table(filtered_forward_reads2)
 ```
 
 
 
+<<<<<<< HEAD
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 # Filter and Trim Reads
 ```{r Filter-trim-2022}
@@ -191,6 +208,13 @@ postQC_aggregate_plot2
 Here, we see the sequences are improved from before. The very low quality that we saw in the pre-QC plots is mostly gone. There is some low quality towards the end, but it will hopefully overlap with the good quality sections of the opposite read. 
 
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -244,6 +268,13 @@ forward_error_plot2 + reverse_error_plot2
 The black lines and dots seem to overlap.  And the red lines are negative
 
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -322,7 +353,16 @@ data.frame(Seq_Length = nchar(getSequences(raw_ASV_table2))) %>%
 ###################################################
 # TRIM THE ASVS
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 # Let's trim the ASVs to only be the right size, which is somewhere in the neighborhood of 400 (its from the v3 v4 region, which can vary in length depending on the taxon)
+=======
+# Let's trim the ASVs to only be the right size, which is 249.
+# 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+# Let's trim the ASVs to only be the right size, which is somewhere in the neighborhood of 400 (its from the v3 v4 region, which can vary in length depending on the taxon)
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
 # Let's trim the ASVs to only be the right size, which is 249.
 # 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
@@ -600,8 +640,12 @@ The  quality improved after trimming and filtering.
 # Error Modelling 
 
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 **Note every sequencing run needs to be run separately!** The error model was run separately on each Illumina dataset. This is because every Illumina run is different, even if the flow cell and DNA/samples are the same. I am doing the exact same `filterAndTrim()` step *AND*, very importantly, you'll have the same primer/ASV length/16S location expected by the output. 
 =======
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 **Note every sequencing run needs to be run separately!** The error model *MUST* be run separately on each Illumina dataset. This is because every Illumina run is different, even if the flow cell and DNA/samples are the same. If you'd like to combine the datasets from multiple Illumina sequencing runs, you'll need to do the exact same `filterAndTrim()` step *AND*, very importantly, you'll need to have the same primer/ASV length/16S location expected by the output. 
 
 *But wait: what contributes to sequencing error in different sequencing runs and why do we need to model errors separately per run with learnErrors() in dada2?* Remember the core principles of how Illumina seuqencing works! Some things that contribute to this are:  
@@ -617,6 +661,12 @@ Ok, that said. Let's now infer error rates for all possible transitions within p
 2. Compares the other sequences to the most abundant sequence. 
 3. Uses at most 10^8^ nucleotides for the error estimation.  
 4. Uses parametric error estimation function of loess fit on the observed error rates. 
+<<<<<<< HEAD
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+**Note every sequencing run needs to be run separately!** The error model was run separately on each Illumina dataset. This is because every Illumina run is different, even if the flow cell and DNA/samples are the same. I am doing the exact same `filterAndTrim()` step *AND*, very importantly, you'll have the same primer/ASV length/16S location expected by the output. 
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 
 ## Learn the errors 
@@ -643,8 +693,12 @@ forward_error_plot3 + reverse_error_plot3
 
 The dots more or less align with the black lines, though there are a couple of outliers.  
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 The estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
 =======
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 
 Details of the plot: 
 - **Points**: The observed error rates for each consensus quality score.  
@@ -652,6 +706,12 @@ Details of the plot:
 - **Red line:** The error rates expected under the nominal definition of the Q-score.  
 
 Similar to what is mentioned in the dada2 tutorial: the estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
+<<<<<<< HEAD
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+The estimated error rates (black line) are a "reasonably good" fit to the observed rates (points), and the error rates drop with increased quality as expected.  We can now infer ASVs! 
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 
 # Infer ASVs 
@@ -726,7 +786,16 @@ data.frame(Seq_Length = nchar(getSequences(raw_ASV_table3))) %>%
 ###################################################
 # TRIM THE ASVS
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 # Let's trim the ASVs to only be the right size, which around 400.
+=======
+# Let's trim the ASVs to only be the right size, which is 249.
+# 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+# Let's trim the ASVs to only be the right size, which around 400.
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
 # Let's trim the ASVs to only be the right size, which is 249.
 # 249 originates from our expected amplicon of 252 - 3bp in the forward read due to low quality.
@@ -835,7 +904,14 @@ track_counts_df3 %>%
   theme_bw()
 ```
 <<<<<<< HEAD
+<<<<<<<< HEAD:analysis/01_DADA_2.Rmd
+<<<<<<< HEAD
 # There is a steep line in s
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
+========
+# There is a steep line in s
+>>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:01_DADA_2.Rmd
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 

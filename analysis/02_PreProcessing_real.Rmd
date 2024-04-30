@@ -94,6 +94,9 @@ dim(track_read_counts)
 <<<<<<< HEAD:analysis/02_PreProcessing_real.Rmd
 =======
 # into: SalinityGradient_16S/data 
+<<<<<<< HEAD:analysis/02_PreProcessing_real.Rmd
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:02_PreProcessing.Rmd
+=======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:02_PreProcessing.Rmd
 # from: /workdir/jmc753/git_repos/AppleRhizRepository/data/metadata.csv
 
@@ -266,6 +269,7 @@ save(raw_preprocessed_physeq_2023,
 ```
 
 <<<<<<< HEAD:analysis/02_PreProcessing_real.Rmd
+<<<<<<< HEAD:analysis/02_PreProcessing_real.Rmd
 ```{r rarefy-phylos-object}
 load(raw_preprocessed_physeq,
      file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
@@ -275,6 +279,8 @@ rare_phylos <- rarefy_even_depth(raw_preprocessed_physeq, sample.size = min(samp
 ```
 
 
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:02_PreProcessing.Rmd
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c:02_PreProcessing.Rmd
 # Session Information 

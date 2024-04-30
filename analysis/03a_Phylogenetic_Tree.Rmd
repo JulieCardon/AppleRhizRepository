@@ -1,6 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 ---
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 title: "Phylogenetic Tree Construction"
@@ -21,10 +24,13 @@ The goal is to create a phylogenetic tree!
 4. Create a tree with FastTree2.  
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Set the seed
 ```{r set-seed}
 set.seed(19)
 ```
+=======
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 
@@ -39,7 +45,11 @@ raw_preprocessed_physeq
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Create Fasta File of ASVs and their Sequences
+=======
+# Create Fasta File of ASV and their Sequences
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 # Create Fasta File of ASV and their Sequences
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
@@ -70,6 +80,7 @@ write(asv_seq_fasta,
 
 # Align the 16S sequences from fasta file with MAFFT
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 - `engine.opts = '-l'`: give us original terminal base environment.
 
@@ -130,6 +141,9 @@ echo "The working directory is $PWD"
 ```{r session-info}
 devtools::session_info()
 ```
+=======
+Mar - you ended class here. :) 
+>>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
 =======
 Mar - you ended class here. :) 
 >>>>>>> 0debb33ca2b2f00a0a0c3f1f72ec87fd1329555c
