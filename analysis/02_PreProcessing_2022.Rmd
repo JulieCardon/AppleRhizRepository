@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
-                      fig.path = "./figures/02_PreProcessing/") # send any figure output to this folder 
+                      fig.path = "../figures/02_PreProcessing/") # send any figure output to this folder 
 ```
 
 # Load libraries 
@@ -125,7 +125,7 @@ save(metadata_track_reads_df2, file = "data/02_PreProcessing/metadata_track_read
 
 
 # Handoff to phyloseq
-```{r phyloseq-handoff}
+```{r phyloseq-handoff-2022}
 # double check it's all good 
 dim(asv_tab2)
 dim(tax_mat2)
@@ -150,7 +150,7 @@ Remove:
 1. Chloroplasts
 2. mitochondria  
 
-```{r rm-mitos-chloros}
+```{r rm-mitos-chloros-2022}
 # Remind myself of tax table 
 #View(tax_mat2)
 
@@ -166,7 +166,7 @@ num_chloro_ASVs2
 
 # Intuition chek 
 #noChloros_physeq2 %>%
- # tax_table2() %>%
+ # tax_table() %>%
   #data.frame() %>%
   #View()
 
@@ -186,11 +186,11 @@ ntaxa(raw_physeq2) - ntaxa(noChlorosMitos_physeq2)
 # proportion of asvs kept? 
 ntaxa(noChlorosMitos_physeq2)/ntaxa(raw_physeq2)
 ```
-## Kept 99% of the taxa
+## Kept 99.9% of the taxa
 
 # Evaluate the Sequencing Depth 
 
-```{r seq-depth}
+```{r seq-depth-2022}
 # The current data object
 noChlorosMitos_physeq2
 
@@ -202,74 +202,75 @@ seqSums_df2 <-
   colSums() %>%
   data.frame() %>%
   rownames_to_column(var = "Sample") %>%
-  left_join(., metadata_track_reads_df, by = "Sample") 
+  left_join(., metadata_track_reads_df2, by = "Sample") 
 
 # Rename second column 
-colnames(seqSums_df)[2] <- "TotalSeqs"
+colnames(seqSums_df2)[2] <- "TotalSeqs"
 
 # check
-dim(seqSums_df)
-head(seqSums_df)
+dim(seqSums_df2)
+head(seqSums_df2)
 
 # Show the depth of samples 
-seqSums_df %>%
+seqSums_df2 %>%
   dplyr::select(Sample, TotalSeqs) %>%
   arrange(TotalSeqs) %>%
   head()
 
 # plot it! 
-seqSums_df %>%
+seqSums_df2 %>%
   ggplot(aes(x=reorder(Sample, TotalSeqs), y = TotalSeqs,
              fill = Rootstock)) + 
   geom_bar(stat = "identity") 
 
 # Density plot 
-seqSums_df %>%
+seqSums_df2 %>%
   ggplot(aes(TotalSeqs, fill = Rootstock)) +
   geom_density(alpha = 0.5)
 ```
 
 # Remove samples with few reads 
 
-```{r rm-samps}
+```{r rm-samps-2022}
 # What's the min seq depth? 
-min(sample_sums(noChlorosMitos_physeq))
+min(sample_sums(noChlorosMitos_physeq2))
+
+#low_samp_asvs <- c("G11_2022", "M2_2022", "V2_2022") #Tried to make a vector, but did not work
 
 #  Make a new object
-raw_preprocessed_physeq <- 
- noChlorosMitos_physeq #%>%
-  #subset_samples(., Sample != "G11_2022")
+raw_preprocessed_physeq2 <- 
+ noChlorosMitos_physeq2 %>%
+  subset_samples(., Sample != "G11_2022") %>%
+  subset_samples(., Sample != "M2_2022") %>%
+  subset_samples(., Sample != "V2_2022")
 
-# Seperating the two years and Remove G11_2022
-raw_preprocessed_physeq_2022 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2022) %>%
-  subset_samples(., Sample != "G11_2022")
-raw_preprocessed_physeq_2023 <- raw_preprocessed_physeq %>% subset_samples(YearSampled==2023)
-#View(raw_preprocessed_physeq_2022)
+#View(raw_preprocessed_physeq2)
 #What's the new min seq depth?
-min(sample_sums(raw_preprocessed_physeq))
-min(sample_sums(raw_preprocessed_physeq_2022))
-min(sample_sums(raw_preprocessed_physeq_2023))
+min(sample_sums(raw_preprocessed_physeq2))
+
 ```
 
 # Save Preprocessed Phyloseq Object
 ```{r save-physeq}
-save(raw_preprocessed_physeq,
-     file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
-save(raw_preprocessed_physeq_2022,
-     file = "data/02_PreProcessing/raw_preprocessed_physeq_2022.RData")
-save(raw_preprocessed_physeq_2023,
-     file = "data/02_PreProcessing/raw_preprocessed_physeq_2023.RData")
+save(raw_preprocessed_physeq2,
+     file = "data/02_PreProcessing/raw_preprocessed_physeq2.RData")
+
 ```
 
+In case we need to have a data object of rarefied ASVs
 ```{r rarefy-phylos-object}
-load(raw_preprocessed_physeq,
-     file = "data/02_PreProcessing/raw_preprocessed_physeq.RData")
 
-rare_phylos <- rarefy_even_depth(raw_preprocessed_physeq, sample.size = min(sample_sums(raw_preprocessed_physeq)), rngseed = TRUE, replace = FALSE, trimOTUs = TRUE, verbose = TRUE)
+load("data/02_PreProcessing/raw_preprocessed_physeq2.RData")
 
+rare_phylos2 <- rarefy_even_depth(raw_preprocessed_physeq2, 
+                                  sample.size = min(sample_sums(raw_preprocessed_physeq2)), 
+                                  rngseed = TRUE, 
+                                  replace = FALSE, 
+                                  trimOTUs = TRUE, 
+                                  verbose = TRUE)
+save(rare_phylos2,
+     file = "data/02_PreProcessing/rare_phylos2.RData")
 
-
-#in inext endpoint 1000
 ```
 
 
